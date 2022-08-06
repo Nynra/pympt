@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mpt"
+version = "0.0.1-a"
+description = "A module for using the Modified Mercle-Patrisa Tree."
+readme = "README.md"
+license = {text = "BSD 3-Clause License"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "cytoolz", "eth-hash", "eth-typing", "eth-utils",
+    "pycryptodome", "rlp", "toolz",
+    'importlib-metadata; python_version<"3.8"',
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
