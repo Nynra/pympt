@@ -11,6 +11,26 @@ class MerklePatriciaTrie:
     MerklePatriciaTrie works like a wrapper over provided storage. 
     Storage must implement dict-like interface. Any data structure 
     that implements `__getitem__` and `__setitem__` should be OK.
+
+    Attributes
+    ----------
+    _storage: dict-like
+        Data structure to store all the data of MPT.
+    _root: bytes
+        (Optional) Root node (not root hash!) of the trie.
+        If not provided, tree will be considered empty.
+    _secure: bool
+        (Optional) In secure mode all the keys are hashed 
+        using keccak256 internally.
+
+    Methods
+    -------
+    get(encoded_key)
+        This method gets a value associtated with provided key.
+    update(encoded_key, encoded_value)
+        This method updates a provided key-value pair into the trie.
+    delete(encoded_key)
+        This method removes a value associtated with provided key.
     """
 
     def __init__(self, storage, root=None, secure=False):
