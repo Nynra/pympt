@@ -1,7 +1,17 @@
+import sys, os
+try:
+    from mpt import MerklePatriciaTrie
+    from mpt.nibble_path import NibblePath
+    from mpt.node import Node
+except (ImportError, ModuleNotFoundError):
+    #Following lines are for assigning parent directory dynamically.
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
+    sys.path.insert(0, parent_dir_path)
+    from src.mpt.mpt import MerklePatriciaTrie
+    from src.mpt.nibble_path import NibblePath
+    from src.mpt.node import Node
 import unittest
-from mpt import MerklePatriciaTrie
-from mpt.nibble_path import NibblePath
-from mpt.node import Node
 import rlp
 import random
 
