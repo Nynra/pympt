@@ -1,87 +1,22 @@
-import unittest
-from mpt import MerklePatriciaTrie
-from mpt.nibble_path import NibblePath
-from mpt.node import Node
+import sys, os
+try:
+    from mpt import MerklePatriciaTrie
+    from mpt.node import Node
+except (ImportError, ModuleNotFoundError):
+    #Following lines are for assigning parent directory dynamically.
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
+    sys.path.insert(0, parent_dir_path)
+    from src.mpt.mpt import MerklePatriciaTrie
+    from src.mpt.node import Node
 import rlp
+import unittest
 import random
-
-
-class TestNibblePath(unittest.TestCase):
-    def test_at(self):
-        nibbles = NibblePath([0x12, 0x34])
-        self.assertEqual(nibbles.at(0), 0x1)
-        self.assertEqual(nibbles.at(1), 0x2)
-        self.assertEqual(nibbles.at(2), 0x3)
-        self.assertEqual(nibbles.at(3), 0x4)
-
-    def test_at_with_offset(self):
-        nibbles = NibblePath([0x12, 0x34], offset=1)
-        self.assertEqual(nibbles.at(0), 0x2)
-        self.assertEqual(nibbles.at(1), 0x3)
-        self.assertEqual(nibbles.at(2), 0x4)
-        with self.assertRaises(IndexError):
-            nibbles.at(3)
-
-    def test_encode(self):
-        nibbles = NibblePath([0x12, 0x34])
-        self.assertEqual(nibbles.encode(False), b'\x00\x12\x34')
-        self.assertEqual(nibbles.encode(True), b'\x20\x12\x34')
-
-        nibbles = NibblePath([0x12, 0x34], offset=1)
-        self.assertEqual(nibbles.encode(False), b'\x12\x34')
-        self.assertEqual(nibbles.encode(True), b'\x32\x34')
-
-    def test_common_prefix(self):
-        nibbles_a = NibblePath([0x12, 0x34])
-        nibbles_b = NibblePath([0x12, 0x56])
-        common = nibbles_a.common_prefix(nibbles_b)
-        self.assertEqual(common, NibblePath([0x12]))
-
-        nibbles_a = NibblePath([0x12, 0x34])
-        nibbles_b = NibblePath([0x12, 0x36])
-        common = nibbles_a.common_prefix(nibbles_b)
-        self.assertEqual(common, NibblePath([0x01, 0x23], offset=1))
-
-        nibbles_a = NibblePath([0x12, 0x34], offset=1)
-        nibbles_b = NibblePath([0x12, 0x56], offset=1)
-        common = nibbles_a.common_prefix(nibbles_b)
-        self.assertEqual(common, NibblePath([0x12], offset=1))
-
-        nibbles_a = NibblePath([0x52, 0x34])
-        nibbles_b = NibblePath([0x02, 0x56])
-        common = nibbles_a.common_prefix(nibbles_b)
-        self.assertEqual(common, NibblePath([]))
-
-    def test_combine(self):
-        nibbles_a = NibblePath([0x12, 0x34])
-        nibbles_b = NibblePath([0x56, 0x78])
-        common = nibbles_a.combine(nibbles_b)
-        self.assertEqual(common, NibblePath([0x12, 0x34, 0x56, 0x78]))
-
-        nibbles_a = NibblePath([0x12, 0x34], offset=1)
-        nibbles_b = NibblePath([0x56, 0x78], offset=3)
-        common = nibbles_a.combine(nibbles_b)
-        self.assertEqual(common, NibblePath([0x23, 0x48]))
-
-
-class TestNode(unittest.TestCase):
-    def assertRoundtrip(self, raw_node, expected_type):
-        decoded = Node.decode(raw_node)
-        encoded = decoded.encode()
-
-        self.assertEqual(type(decoded), expected_type)
-        self.assertEqual(raw_node, encoded)
-
-    def test_leaf(self):
-        # Path 0xABC. 0x3_ at the beginning: 0x20 (for leaf type) + 0x10 (for odd len)
-        nibbles_path = bytearray([0x3A, 0xBC])
-        data = bytearray([0xDE, 0xAD, 0xBE, 0xEF])
-        raw_node = rlp.encode([nibbles_path, data])
-        self.assertRoundtrip(raw_node, Node.Leaf)
 
 
 class TestMPT(unittest.TestCase):
     def test_insert_get_one_short(self):
+        """Test inserting one short key-value pair and then getting it."""
         storage = {}
         trie = MerklePatriciaTrie(storage)
 
@@ -96,6 +31,7 @@ class TestMPT(unittest.TestCase):
             trie.get(rlp.encode(b'no_key'))
 
     def test_insert_get_one_long(self):
+        """Test inserting one long key-value pair and then getting it."""
         storage = {}
         trie = MerklePatriciaTrie(storage)
 
@@ -107,6 +43,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(value, gotten_value)
 
     def test_insert_get_many(self):
+        """Test inserting many key-value pairs and then getting them."""
         storage = {}
 
         trie = MerklePatriciaTrie(storage)
@@ -122,6 +59,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(trie.get(b'horse'), b'stallion')
 
     def test_insert_get_lots(self):
+        """Test inserting lots of key-value pairs and then getting them."""
         random.seed(42)
         storage = {}
         rand_numbers = [random.randint(1, 1000000) for _ in range(100)]
@@ -136,6 +74,7 @@ class TestMPT(unittest.TestCase):
             self.assertEqual(trie.get(kv), kv * 2)
 
     def test_delete_one(self):
+        """Test deleting one key-value pair and then getting it."""
         storage = {}
         trie = MerklePatriciaTrie(storage)
 
@@ -146,6 +85,7 @@ class TestMPT(unittest.TestCase):
             trie.get(b'key')
 
     def test_delete_many(self):
+        """Test deleting many key-value pairs and then getting them."""
         storage = {}
 
         trie = MerklePatriciaTrie(storage)
@@ -170,6 +110,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(root_hash, new_root_hash)
 
     def test_delete_lots(self):
+        """Test deleting lots of key-value pairs and then getting them."""
         random.seed(42)
         storage = {}
         rand_numbers = set([random.randint(1, 1000000) for _ in range(100)])  # Unique only.
@@ -186,6 +127,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(trie.root_hash(), Node.EMPTY_HASH)
 
     def test_root_hash(self):
+        """Test getting the root hash of a trie."""
         storage = {}
 
         trie = MerklePatriciaTrie(storage)
@@ -200,6 +142,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(root_hash, bytes.fromhex('5991bb8c6514148a29db676a14ac506cd2cd5775ace63c30a4fe457715e9ac84'))
 
     def test_root_hash_after_updates(self):
+        """Test getting the root hash of a trie after updates."""
         storage = {}
 
         trie = MerklePatriciaTrie(storage)
@@ -218,6 +161,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(root_hash, bytes.fromhex('5991bb8c6514148a29db676a14ac506cd2cd5775ace63c30a4fe457715e9ac84'))
 
     def test_root_hash_after_deletes(self):
+        """Test getting the root hash of a trie after deletes."""
         storage = {}
 
         trie = MerklePatriciaTrie(storage)
@@ -242,6 +186,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(root_hash, bytes.fromhex('5991bb8c6514148a29db676a14ac506cd2cd5775ace63c30a4fe457715e9ac84'))
 
     def test_trie_from_old_root(self):
+        """Test getting the root hash of a trie after deletes."""
         storage = {}
 
         trie = MerklePatriciaTrie(storage)

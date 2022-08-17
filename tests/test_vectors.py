@@ -1,7 +1,13 @@
+import sys, os
+try:
+    from mpt import MerklePatriciaTrie
+except (ImportError, ModuleNotFoundError):
+    #Following lines are for assigning parent directory dynamically.
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
+    sys.path.insert(0, parent_dir_path)
+    from src.mpt.mpt import MerklePatriciaTrie
 import unittest
-from mpt import MerklePatriciaTrie
-from mpt.hash import keccak_hash
-import os
 import json
 
 CURRENT_FOLDER = os.path.dirname(os.path.realpath(__file__))
@@ -77,3 +83,7 @@ class TestVectors(unittest.TestCase):
         secure = True
 
         self.run_testvector(test_vector_name, secure)
+
+
+if __name__ == '__main__':
+    unittest.main()
