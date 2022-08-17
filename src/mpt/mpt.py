@@ -5,14 +5,17 @@ from .node import Node
 
 
 class MerklePatriciaTrie:
+    """
+    This class represents a trie.
+
+    MerklePatriciaTrie works like a wrapper over provided storage. 
+    Storage must implement dict-like interface. Any data structure 
+    that implements `__getitem__` and `__setitem__` should be OK.
+    """
 
     def __init__(self, storage, root=None, secure=False):
         """
-        Creates a new instance of MPT.
-
-        MerklePatriciaTrie works like a wrapper over provided storage. 
-        Storage must implement dict-like interface. Any data structure 
-        that implements `__getitem__` and `__setitem__` should be OK.
+        Create a new instance of MPT.
 
         Parameters
         ----------
@@ -23,11 +26,6 @@ class MerklePatriciaTrie:
             If not provided, tree will be considered empty.
         secure: bool
             (Optional) In secure mode all the keys are hashed using keccak256 internally.
-
-        Returns
-        -------
-        MerklePatriciaTrie
-            An instance of MPT.
         """
         self._storage = storage
         self._root = root
@@ -37,7 +35,10 @@ class MerklePatriciaTrie:
         """
         Return a root node of the trie. 
         
-        Type is `bytes` if trie isn't empty and `None` othrewise. 
+        Returns
+        -------
+        Node
+            Root node of the trie. Type is `bytes` if trie isn't empty and `None` otherwise. 
         """
         return self._root
 
@@ -46,6 +47,11 @@ class MerklePatriciaTrie:
         Returns a hash of the trie's root node. 
         
         For empty trie it's the hash of the RLP-encoded empty string. 
+
+        Returns
+        -------
+        bytes
+            Hash of the trie's root node. 
         """
 
         if not self._root:
@@ -161,7 +167,29 @@ class MerklePatriciaTrie:
         return Node.decode(raw_node)
 
     def _get(self, node_ref, path):
-        """ Get support method """
+        """
+        Get support method.
+        
+        Returns a value associated with provided key.
+        
+        Parameters
+        ----------
+        node_ref: bytes
+            Reference to a node.
+        path: NibblePath
+            Path to a value.
+            
+        Returns
+        -------
+        bytes
+            Value associated with provided key.
+            
+        Raises
+        ------
+        KeyError
+            KeyError is raised if there is no value assotiated with provided key.
+        
+        """
         node = self._get_node(node_ref)
 
         # If path is empty, our travel is over. Main `get` method 
@@ -189,10 +217,35 @@ class MerklePatriciaTrie:
 
         # Raise error if it's a wrong node, extension with different 
         # path or branch node without appropriate branch.
+        # TODO: #5 Raise errors with a proper message.
         raise KeyError
 
     def _update(self, node_ref, path, value):
-        """ Update support method """
+        """
+        Update support method.
+        
+        Updates a value associated with provided key.
+        
+        Parameters
+        ----------
+        node_ref: bytes
+            Reference to a node.
+        path: NibblePath
+            Path to a value.
+        value: bytes
+            Value to be stored.
+            
+        Returns
+        -------
+        bytes
+            New root of the trie.
+        
+        Raises
+        ------
+        KeyError
+            KeyError is raised if there is no value assotiated with provided key.
+            
+        """
         if not node_ref:
             return self._store_node(Node.Leaf(path, value))
 
@@ -286,9 +339,23 @@ class MerklePatriciaTrie:
 
     def _create_branch_node(self, path_a, value_a, path_b, value_b):
         """ 
-        Creates a branch node with up to two leaves and maybe value. 
+        Create a branch node with up to two leaves and maybe value. 
         
-        Returns a reference to created node. 
+        Parameters
+        ----------
+        path_a: NibblePath
+            Path to a leaf.
+        value_a: bytes
+            Value to be stored in a leaf.
+        path_b: NibblePath
+            Path to a leaf.
+        value_b: bytes
+            Value to be stored in a leaf.
+
+        Returns
+        -------
+        bytes
+            Reference to created node. 
         """
 
         assert len(path_a) != 0 or len(path_b) != 0
@@ -307,7 +374,23 @@ class MerklePatriciaTrie:
         return self._store_node(Node.Branch(branches, branch_value))
 
     def _create_branch_leaf(self, path, value, branches):
-        """ If path isn't empty, creates leaf node and stores reference in appropriate branch. """
+        """
+        If path isn't empty, creates leaf node and stores reference in appropriate branch.
+        
+        Parameters
+        ----------
+        path: NibblePath
+            Path to a leaf.
+        value: bytes
+            Value to be stored in a leaf.
+        branches: list of bytes
+            List of references to nodes.
+        
+        Returns
+        -------
+        None
+        
+        """
         if len(path) > 0:
             idx = path.at(0)
 
@@ -316,8 +399,22 @@ class MerklePatriciaTrie:
 
     def _create_branch_extension(self, path, next_ref, branches):
         """
-        If needed, creates an extension node and stores reference in appropriate branch.
+        If needed, create an extension node and stores reference in appropriate branch.
         Otherwise just stores provided reference.
+
+        Parameters
+        ----------
+        path: NibblePath
+            Path to an extension node.
+        next_ref: bytes
+            Reference to a node.
+        branches: list of bytes
+            List of references to nodes.
+        
+        Returns
+        -------
+        None
+
         """
         assert len(path) >= 1, "Path for extension node should contain at least one nibble"
 
@@ -329,14 +426,28 @@ class MerklePatriciaTrie:
             branches[idx] = reference
 
     def _store_node(self, node):
-        """ Builds the reference from the node and if needed saves node in the storage. """
+        """
+        Build the reference from the node and if needed saves node in the storage.
+        
+        Parameters
+        ----------
+        node: Node
+            Node to be stored.
+        
+        Returns
+        -------
+        bytes
+            Reference to the node.
+        """
         reference = Node.into_reference(node)
         if len(reference) == 32:
             self._storage[reference] = node.encode()
         return reference
 
-    # Enum that shows which action was performed on the previous step of the deletion.
     class _DeleteAction(Enum):
+        """
+        Enum that shows which action was performed on the previous step of the deletion.
+        """
         # Node was deleted. Returned value should be (_DeleteAction, None).
         DELETED = 1,
         # Node was updated. Returned value should be (_DeleteAction, new_node_reference)
@@ -346,7 +457,22 @@ class MerklePatriciaTrie:
         USELESS_BRANCH = 3
 
     def _delete(self, node_ref, path):
-        """ Delete method helper """
+        """
+        Delete method helper.
+        
+        Parameters
+        ----------
+        node_ref: bytes
+            Reference to the node.
+        path: NibblePath
+            Path to the node.
+            
+        Returns
+        -------
+        _DeleteAction
+            Action that was performed on the previous step of the deletion.
+        
+        """
 
         node = self._get_node(node_ref)
 
@@ -474,7 +600,25 @@ class MerklePatriciaTrie:
                 return MerklePatriciaTrie._DeleteAction.UPDATED, reference
 
     def _build_new_node_from_last_branch(self, branches):
-        """ Combines nibble of the only branch left with underlying node and creates new node. """
+        """
+        Combine nibble of the only branch left with underlying node and creates new node.
+        
+        Parameters
+        ----------
+        branches : list of bytes
+            List of references to the branches.
+            
+        Returns
+        -------
+        tuple
+            Tuple of `_DeleteAction` and reference to the new node.
+        
+        Raises
+        ------
+        KeyError
+            If there is no branches left.
+        
+        """
 
         # Find the index of the only stored branch.
         idx = 0
