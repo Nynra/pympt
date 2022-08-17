@@ -1,4 +1,4 @@
-from .node import Node
+from .node import Node, Leaf
 from .mpt import MerklePatriciaTrie as MPT
 from .nibble_path import NibblePath
 
@@ -20,17 +20,14 @@ class Proof():
         except KeyError:
             raise KeyError('Key not found in trie.')
         
-        # Create a nibble path
-        nibble_path = NibblePath(key)
-
-        # Get the 
-
-
-
+        # Get the node from the trie storage
+        node = trie.get_node(key[1]) 
 
         # If the key is in the trie, create the proof
         proof = []
-        while not isinstance(node, Node.Leaf):
+        if isinstance(node, Leaf):
+            raise Exception('Node is a leaf')
+        while not isinstance(node, Leaf):
             print(10)
             proof.append(node.encode())
             node = node.get_child(key[len(node.path):])

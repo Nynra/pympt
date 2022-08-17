@@ -138,8 +138,9 @@ class MerklePatriciaTrie:
 
         path = NibblePath(encoded_key)
 
-        result_node = self._get(self._root, path)
-        return result_node
+        # result_node = self._get(self._root, path)
+        # return result_node
+        return self._get(self._root, path)
 
     def update(self, encoded_key, encoded_value):
         """

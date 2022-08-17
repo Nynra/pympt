@@ -16,6 +16,7 @@ import random
 
 class TestMPT(unittest.TestCase):
     def test_insert_get_one_short(self):
+        """Test inserting one short key-value pair and then getting it."""
         storage = {}
         trie = MerklePatriciaTrie(storage)
 
@@ -30,6 +31,7 @@ class TestMPT(unittest.TestCase):
             trie.get(rlp.encode(b'no_key'))
 
     def test_insert_get_one_long(self):
+        """Test inserting one long key-value pair and then getting it."""
         storage = {}
         trie = MerklePatriciaTrie(storage)
 
@@ -41,6 +43,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(value, gotten_value)
 
     def test_insert_get_many(self):
+        """Test inserting many key-value pairs and then getting them."""
         storage = {}
 
         trie = MerklePatriciaTrie(storage)
@@ -56,6 +59,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(trie.get(b'horse'), b'stallion')
 
     def test_insert_get_lots(self):
+        """Test inserting lots of key-value pairs and then getting them."""
         random.seed(42)
         storage = {}
         rand_numbers = [random.randint(1, 1000000) for _ in range(100)]
@@ -70,6 +74,7 @@ class TestMPT(unittest.TestCase):
             self.assertEqual(trie.get(kv), kv * 2)
 
     def test_delete_one(self):
+        """Test deleting one key-value pair and then getting it."""
         storage = {}
         trie = MerklePatriciaTrie(storage)
 
@@ -80,6 +85,7 @@ class TestMPT(unittest.TestCase):
             trie.get(b'key')
 
     def test_delete_many(self):
+        """Test deleting many key-value pairs and then getting them."""
         storage = {}
 
         trie = MerklePatriciaTrie(storage)
@@ -104,6 +110,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(root_hash, new_root_hash)
 
     def test_delete_lots(self):
+        """Test deleting lots of key-value pairs and then getting them."""
         random.seed(42)
         storage = {}
         rand_numbers = set([random.randint(1, 1000000) for _ in range(100)])  # Unique only.
@@ -120,6 +127,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(trie.root_hash(), Node.EMPTY_HASH)
 
     def test_root_hash(self):
+        """Test getting the root hash of a trie."""
         storage = {}
 
         trie = MerklePatriciaTrie(storage)
@@ -134,6 +142,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(root_hash, bytes.fromhex('5991bb8c6514148a29db676a14ac506cd2cd5775ace63c30a4fe457715e9ac84'))
 
     def test_root_hash_after_updates(self):
+        """Test getting the root hash of a trie after updates."""
         storage = {}
 
         trie = MerklePatriciaTrie(storage)
@@ -152,6 +161,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(root_hash, bytes.fromhex('5991bb8c6514148a29db676a14ac506cd2cd5775ace63c30a4fe457715e9ac84'))
 
     def test_root_hash_after_deletes(self):
+        """Test getting the root hash of a trie after deletes."""
         storage = {}
 
         trie = MerklePatriciaTrie(storage)
@@ -176,6 +186,7 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(root_hash, bytes.fromhex('5991bb8c6514148a29db676a14ac506cd2cd5775ace63c30a4fe457715e9ac84'))
 
     def test_trie_from_old_root(self):
+        """Test getting the root hash of a trie after deletes."""
         storage = {}
 
         trie = MerklePatriciaTrie(storage)

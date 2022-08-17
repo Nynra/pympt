@@ -22,4 +22,4 @@ trie.update(b'horse', b'stallion')
 trie.update(b'domain', b'name')
 trie.update(b'dom', b'things')
 
-print(Proof.proof_of_inclusion(trie, b'doge'))
+print(Proof.proof_of_inclusion(trie, b'domain'))
