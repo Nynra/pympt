@@ -1,11 +1,12 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "mpt"
 version = "0.0.1-a"
 description = "A module for using the Modified Mercle-Patrisa Tree."
+authors = [{name = "Nynra", email="nynradev@pm.me"}]
 readme = "README.md"
 license = {text = "BSD 3-Clause License"}
 classifiers = [
