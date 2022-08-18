@@ -209,3 +209,14 @@ class TestMPT(unittest.TestCase):
         self.assertEqual(trie.get(b'do'), b'not_a_verb')
         with self.assertRaises(KeyError):
             trie.get(b'dog')
+
+
+class Test_proof(unittest.TestCase):
+    """Test the proof functions of the MPT."""
+    pass
+
+    # Add one data item and create a proof
+
+    # Add many data items and create a proof
+
+    # Add lots of data items and create a proof
