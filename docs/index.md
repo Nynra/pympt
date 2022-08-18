@@ -1,5 +1,3 @@
-mpt
-~~~~~
 Python implementation of Merkle Patricia Trie.
 
 :copyright: © 2019 by Igor Aleksanov.
