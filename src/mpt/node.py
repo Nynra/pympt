@@ -138,7 +138,7 @@ class Leaf(Node):
         self.path = path
         self.data = data
 
-    def encode(self):
+    def encode(self, include_data=True):
         """
         Encodes the leaf into RLP.
 
@@ -148,7 +148,10 @@ class Leaf(Node):
             Encoded leaf.
 
         """
-        return rlp.encode([self.path.encode(True), self.data])
+        if include_data:
+            return rlp.encode([self.path.encode(True), self.data])
+        else:
+            return rlp.encode([self.path.encode(True)])
 
 
 class Extension(Node):
@@ -179,14 +182,19 @@ class Extension(Node):
         path : NibblePath
             Path to the node.
         next_ref : bytes or bytearray
-            Reference to the node.
+            Reference to the next node.
         """
         self.path = path
         self.next_ref = next_ref
 
-    def encode(self):
+    def encode(self, include_data=True):
         """
         Encodes the extension into RLP.
+
+        Parameters
+        ----------
+        include_data : bool
+            Include the reference to the next node.
 
         Returns
         -------
@@ -194,7 +202,10 @@ class Extension(Node):
             Encoded extension.
         """
         next_ref = _prepare_reference_for_encoding(self.next_ref)
-        return rlp.encode([self.path.encode(False), next_ref])
+        if include_data:
+            return rlp.encode([self.path.encode(False), next_ref])
+        else:
+            return rlp.encode([self.path.encode(False)])
 
 
 class Branch(Node):
@@ -218,7 +229,7 @@ class Branch(Node):
         self.branches = branches
         self.data = data
 
-    def encode(self):
+    def encode(self, include_data=True):
         """
         Encodes the branch into RLP.
 
@@ -228,5 +239,8 @@ class Branch(Node):
             Encoded branch.
         """
         branches = list(map(_prepare_reference_for_encoding, self.branches))
-        return rlp.encode(branches + [self.data])
+        if include_data:
+            return rlp.encode(branches + [self.data])
+        else:
+            return rlp.encode(branches)
 

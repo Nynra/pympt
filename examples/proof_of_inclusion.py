@@ -8,6 +8,8 @@ except (ImportError, ModuleNotFoundError):
     sys.path.insert(0, parent_dir_path)
     from src.mpt.mpt import MerklePatriciaTrie
     from src.mpt.proof import Proof
+from Crypto.Hash import keccak
+import random
 
 
 # Create the storage
@@ -19,7 +21,14 @@ trie.update(b'do', b'verb')
 trie.update(b'dog', b'puppy')
 trie.update(b'doge', b'coin')
 trie.update(b'horse', b'stallion')
-trie.update(b'domain', b'name')
-trie.update(b'dom', b'things')
+trie.update(b'dogecoin', b'coin')
+trie.update(b'dogecoiN', b'coin')
+trie.update(b'dogfcoin', b'coin')
+trie.update(b'dogfcoin', b'coin')
+trie.update(b'dogecoiiin', b'coin')
 
-print(Proof.proof_of_inclusion(trie, b'domain'))
+# Get the proof of inclusion for the key.
+proof = trie.get_proof_of_inclusion(b'dogecoiiin')
+print('Proof: {}'.format(proof))
+print('Proof valid: {}'.format(trie.verify_proof_of_inclusion(b'dogecoiiin', proof)))
+print('Tree root: {}'.format(trie.root()))

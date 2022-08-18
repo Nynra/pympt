@@ -106,6 +106,7 @@ class NibblePath:
 
         return True
 
+    @staticmethod
     def decode_with_type(data):
         """
         Decode the NibblePath and its type from raw bytes.
@@ -131,6 +132,7 @@ class NibblePath:
 
         return NibblePath(data, offset), is_leaf
 
+    @staticmethod
     def decode(data):
         """
         Decodes NibblePath without its type from raw bytes.
