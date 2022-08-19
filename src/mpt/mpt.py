@@ -197,9 +197,6 @@ class MerklePatriciaTrie:
         """
         if self._root is None:
             return
-
-        # Check if key is in the trie
-        _ = self.get(encoded_key)
         
         if self._secure:
             encoded_key = keccak_hash(encoded_key)
@@ -757,7 +754,7 @@ class MerklePatriciaTrie:
                 idx = path.at(0)
 
                 if len(node.branches[idx]) == 0:
-                    raise KeyError
+                    raise KeyError("Empty branch in _delete, could not delete the value.")
 
                 action, info = self._delete(node.branches[idx], path.consume(1))
                 node.branches[idx] = b''
