@@ -11,41 +11,27 @@ except (ImportError, ModuleNotFoundError):
     from src.mpt.hash import keccak_hash
 import rlp
 
+# Create the storage
 storage = {}
-numbers = [i for i in range(100)]
-data = list(map(lambda x: bytes('{}'.format(x), 'utf-8'), numbers))
 trie = ModifiedMerklePatriciaTrie(storage)
 
-for kv in data:
-    trie.put(kv)
-
-proofs = [trie.get_proof_of_inclusion(keccak_hash(rlp.encode(v))) for v in data]
-for p in proofs:
-    print(p)
-
-# Create the storage
-#storage = {}
-#trie = ModifiedMerklePatriciaTrie(storage)
-
 # Insert some data
-#data = [b'do', b'dog', b'doge', b'horse']
+trie.put(b'do')
+trie.put(b'dog')
+trie.put(b'doge')
+trie.put(b'horse')
+trie.put(b'dogecoin')
+trie.put(b'dogecoiN')
+trie.put(b'dogfcoin')
+trie.put(b'dogfcoin')
+trie.put(b'dogecoiiin')
 
-#for d in data:
-#    trie.put(d)
+# Get the proof of inclusion for the key
+key = b'dog'
+proof = trie.get_proof_of_inclusion(trie.get_key(key))
 
-#trie.put(b'dogecoin')
-#trie.put(b'dogecoiN')
-#trie.put(b'dogfcoin')
-#trie.put(b'dogfcoin')
-#trie.put(b'dogecoiiin')
+print('Proof dict:')
+for i, j in proof.items():
+    print(i, ':', j)
 
-# Get the proof of inclusion for all the keys
-#proofs = []
-#for d in data:
-#    proofs.append(trie.get_proof_of_inclusion(keccak_hash(rlp.encode(d))))
-#print(proofs)
-
-#proof = trie.get_proof_of_inclusion(trie.get_key(value))
-##print('Proof: {}'.format(proof))
-#print('Proof valid: {}'.format(trie.verify_proof_of_inclusion(trie.get_key(value), proof)))
-#print('Tree root: {}'.format(trie.root()))
+print('\nProof valid: {}'.format(trie.verify_proof_of_inclusion(trie.get_key(key), proof)))

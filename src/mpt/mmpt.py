@@ -6,24 +6,25 @@ import rlp
 
 class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
     """
-    The MMPT class is a child of the MPT class and is used to enforce hashing
+    The MMPT class is a child of the MPT class and ised to store and verify data
 
     A child is used instead of modified the parent so all the tests keep working.
-    This class uses the hash of the value as key.
+    This class uses the rpl encoded hash of the value as key.
 
     IMPORTANT: 
     - The hash of the value is used as key.
-    - Keys should not be RLP encoded.
+    - Keys should not be RLP encoded when passed to a function.
 
     This means a stored value is stored under the key keccak_hash(rlp.encode(value)).
 
     Methods
     -------
-    update(encoded_value)
-        Update the value of the certain key. If the key is not yet in the trie,
-        it is added.
+    update(encoded_value, encoded_old_key)
+        Update the value of the certain key. 
     get_key(encoded_value)
         Get the key associated with the given value.
+    put(encoded_value)
+        Put the value in the trie.
     get(encoded_key)
         Get the value associated with the given key.
     delete(encoded_value)
@@ -86,9 +87,6 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
 
         """
         encoded_value = rlp.encode(encoded_value)
-
-        # TODO: Check if the old key is in the trie
-
         # Check if the new and old key are the same
         if encoded_old_key == encoded_value:
             return
@@ -176,7 +174,9 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             The proof of inclusion of the certain key.
 
         """
-        return super().get_proof_of_inclusion(encoded_key, hash_key=False)
+        return {'root': self.root_hash(),
+                'proof': super().get_proof_of_inclusion(encoded_key, hash_key=False),
+                'target': encoded_key}
 
     def verify_proof_of_inclusion(self, encoded_key, proof):
         """
@@ -195,6 +195,11 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             True if the proof is valid, False otherwise.
 
         """
-        return super().verify_proof_of_inclusion(encoded_key, proof)
+        if proof['root'] != self.root_hash():
+            raise KeyError("The supplied root is not meant for this trie.")
+        if proof['target'] != encoded_key:
+            raise KeyError('The supplied proof is not meant for the given key.')
+        
+        return super().verify_proof_of_inclusion(encoded_key, proof['proof'], hash_key=False)
 
 
