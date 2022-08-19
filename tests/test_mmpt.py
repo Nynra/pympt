@@ -310,7 +310,7 @@ class Test_proof(unittest.TestCase):
         trie.put(b'dog')
         proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(b'dog')))
         expected = b']\xa4\x89[\x84\xf4\xadd\x82\x9f\x8a\x96\x92F`\x82\xe6\x00\x05\x1e$\x9b\xf3"\x02\xe5\xe21\x9b\xf6t\xe9'
-        self.assertEqual(proof, expected, 'Proof does not match expected.')
+        self.assertEqual(proof['proof'], expected, 'Proof does not match expected.')
 
     def test_proof_many(self):
         """Test getting the proof of many key-value pairs with trie in non secure."""
@@ -322,7 +322,7 @@ class Test_proof(unittest.TestCase):
             trie.put(kv)
 
         # Generate a proof for each key
-        proofs = [trie.get_proof_of_inclusion(keccak_hash(rlp.encode(kv))) for kv in data]
+        proofs = [trie.get_proof_of_inclusion(keccak_hash(rlp.encode(kv)))['proof'] for kv in data]
         expected = [b'8R\xdaE\xcc\x8d\xe7<\xbco]\xfbsy\r\xd12\x9a\xa4\x12\x7f\x9e\x9e4\xa9\xf3w\x8b\x03\x8b\xd0\xd0', 
                     b'\\R\xc1\xcc\xa6p\xae\xd9\xc0\xac\xd9{\x1c\xcc\xe3\x16\n\x98hgJIJ\x92\x1b{!\x8b\x96\xedDr', 
                     b'z_`\xa7\xe8\x9d\xdc\x07\xacjg\x8d;A\x0ef\xe2\xbb\x1e\x94\xa9\xc5\xe8=0r\xde\xf4i\x0e\xf7C', 
@@ -340,7 +340,7 @@ class Test_proof(unittest.TestCase):
         for kv in data:
             trie.put(kv)
 
-        proofs = [trie.get_proof_of_inclusion(keccak_hash(rlp.encode(kv))) for kv in data]
+        proofs = [trie.get_proof_of_inclusion(keccak_hash(rlp.encode(kv)))['proof'] for kv in data]
 
         expected = [b'xk\x87?\x90D\xc0\x8d\xda\x07"\xd2T\\\xcabm\xe8%\x91g8L\x8bL\x97\xddfM\x92b\x90',
             b"TQ\x8b>'\\\xfdpjK{i\x84\xf7\xe3k\xb7\xe1,_\xf3\xea\xb4\xed.=~\xd8\xde\x14f\x13",
@@ -446,7 +446,7 @@ class Test_proof(unittest.TestCase):
             self.assertEqual(proofs[i], expected[i], 'Proof does not match expected for {}, expected {}, got {}.'.format(data[i], expected[i], proofs[i]))
     
     def test_valid(self):
-        """Test if the validation function."""
+        """Test if the validation function wokrs."""
         storage = {}
         trie = ModifiedMerklePatriciaTrie(storage)
 
@@ -456,13 +456,14 @@ class Test_proof(unittest.TestCase):
             trie.put(kv)
 
         # Get the proofs and validate
-        proofs = [trie.get_proof_of_inclusion(keccak_hash(rlp.encode(kv))) for kv in data]
-        for cnt, p in enumerate(proofs):
-            self.assertEqual(trie.verify_proof_of_inclusion(
-                keccak_hash(rlp.encode(data[cnt])), p), True, 'Proof is not valid but should be.')
+        for i in range(len(data)):
+            proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(data[i])))
+            self.assertTrue(trie.verify_proof_of_inclusion(
+                keccak_hash(rlp.encode(data[i])), proof), 'Proof for {} is not valid.'.format(data[i]))
+
 
     # Test if the proof is valid when one point is removed
-    def test_verify_one_point_removed(self):
+    def test_verify_one_item_removed(self):
         """Test if the proof is still valid after removing one point."""
         storage = {}
         trie = ModifiedMerklePatriciaTrie(storage)
@@ -493,8 +494,8 @@ class Test_proof(unittest.TestCase):
         # Get the proofs and validate
         proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(data[2])))
         trie.put(b'testing')
-        self.assertEqual(trie.verify_proof_of_inclusion(
-            keccak_hash(rlp.encode(data[2])), proof + b'o'), False, 'Proof should not be valid.')
+        with self.assertRaises(KeyError):
+            trie.verify_proof_of_inclusion(keccak_hash(rlp.encode(data[2])), proof) 
 
     # Test if the proof is valid when one char is removed
     def test_verify_one_char_removed(self):
@@ -509,8 +510,9 @@ class Test_proof(unittest.TestCase):
 
         # Get the proofs and validate
         proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(data[2])))
+        proof['proof'] = proof['proof'][:-1]
         self.assertEqual(trie.verify_proof_of_inclusion(
-            keccak_hash(rlp.encode(data[2])), proof[:-1]), False, 'Proof should not be valid.')
+            keccak_hash(rlp.encode(data[2])), proof), False, 'Proof should not be valid.')
 
     # Test if the proof is valid when one char is added
     def test_verify_one_char_added(self):
@@ -524,5 +526,7 @@ class Test_proof(unittest.TestCase):
             trie.put(kv)
 
         # Get the proofs and validate
-        proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode('dog'))) + b'0'
-        self.assertEqual(trie.verify_proof_of_inclusion(keccak_hash(rlp.encode(data[2])), proof), False, 'Proof should not be valid.')
+        proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(data[2])))
+        proof['proof'] += b'0'
+        self.assertEqual(trie.verify_proof_of_inclusion(keccak_hash(rlp.encode(data[2])), 
+            proof), False, 'Proof should not be valid.')

@@ -22,17 +22,6 @@ class MerklePatriciaTrie:
         an extension or a branch. How many values are stored in a node depends on
         the node type.
 
-    Attributes
-    ----------
-    _storage: dict-like
-        Data structure to store all the data of MPT.
-    _root: bytes
-        (Optional) Root node (not root hash!) of the trie.
-        If not provided, tree will be considered empty.
-    _secure: bool
-        (Optional) In secure mode all the keys are hashed 
-        using keccak256 internally.
-
     Methods
     -------
     get(encoded_key)
@@ -69,6 +58,7 @@ class MerklePatriciaTrie:
         -------
         Node
             Root node of the trie. Type is `bytes` if trie isn't empty and `None` otherwise. 
+
         """
         return self._root
 
@@ -82,6 +72,7 @@ class MerklePatriciaTrie:
         -------
         bytes
             Hash of the trie's root node. 
+
         """
 
         if not self._root:
@@ -140,6 +131,11 @@ class MerklePatriciaTrie:
             RLP-encoded key.
         encoded_value: bytes
             RLP-encoded value.
+
+        Returns
+        -------
+        None
+
         """
         if self._secure:
             encoded_key = keccak_hash(encoded_key)
@@ -161,6 +157,10 @@ class MerklePatriciaTrie:
         ----------
         encoded_key: bytes
             RLP-encoded key.
+
+        Returns
+        -------
+        None
 
         Raises
         ------
@@ -191,9 +191,26 @@ class MerklePatriciaTrie:
     def get_proof_of_inclusion(self, encoded_key, hash_key=True):
         """
         This method returns a proof of inclusion for a key.
+
         Proof is a list of nodes that are necessary to reconstruct the trie.
+
         Note: this method does not RLP-encode the key. 
         If you use encoded keys, you should encode it yourself.
+
+        Parameters
+        ----------
+        encoded_key: bytes
+            RLP-encoded key.
+        hash_key: bool
+            (Optional) If true, key is hashed using keccak256.
+            If false, key is not hashed. Default is true. Only
+            use false if you are sure that key is already hashed.
+
+        Returns
+        -------
+        proof_hash: bytes
+            Hash of the proof.
+
         """
         if self._root is None:
             return
@@ -205,17 +222,37 @@ class MerklePatriciaTrie:
         proof =  self._get_proof_of_inclusion(self._root, path, [])
         return keccak_hash_list(proof)
 
-    def verify_proof_of_inclusion(self, encoded_key, proof):
+    def verify_proof_of_inclusion(self, encoded_key, proof, hash_key=True):
         """
         This method verifies a proof of inclusion for a key.
+
         Note: this method does not RLP-encode the key. 
         If you use encoded keys, you should encode it yourself.
+
+        Parameters
+        ----------
+        encoded_key: bytes
+            RLP-encoded key.
+        proof: list of bytes
+            Proof of inclusion hash for a key.
+        hash_key: bool
+            (Optional) If true, the key is hashed using keccak256.
+
+        Returns
+        -------
+        bool
+            True if the proof is valid, False otherwise.
+
         """
         if self._root is None:
             return False
 
-        new_proof = self.get_proof_of_inclusion(encoded_key)
-        return new_proof == proof
+        if self._secure and hash_key:
+            encoded_key = keccak_hash(encoded_key)
+
+        path = NibblePath(encoded_key)
+        new_proof = self._get_proof_of_inclusion(self._root, path, [])
+        return keccak_hash_list(new_proof) == proof
 
     def _get_node(self, node_ref):
         """
@@ -230,6 +267,7 @@ class MerklePatriciaTrie:
         -------
         Node
             Node from storage.
+
         """
         raw_node = None
 
@@ -379,40 +417,6 @@ class MerklePatriciaTrie:
 
         raise KeyError('Unknown node type {}'.format(node))
 
-    def _verify_proof_of_inclusion(self, node_ref, path, proof):
-        """
-        Verify proof of inclusion support method.
-        
-        Verifies a proof of inclusion for a node ref.
-        
-        Parameters
-        ----------
-        node_ref: bytes
-            Reference to a node.
-        path: NibblePath
-            Path to a value.
-        proof: list of bytes
-            Proof of inclusion.
-            
-        Returns
-        -------
-        bool
-            True if the proof is valid, False otherwise.
-            
-        Raises
-        ------
-        KeyError
-            KeyError is raised if there is no node assotiated with provided key.
-        
-        """
-        # Generate a proof of inclusion for the node ref
-        new_proof = self._get_proof_of_inclusion(node_ref, path, [])
-
-        # Hash the new and old proofs and compare them
-        raise NotImplementedError()
-        return keccak_hash(new_proof) == keccak_hash(proof)
-        
-
     def _update(self, node_ref, path, value):
         """
         Update support method.
@@ -549,6 +553,7 @@ class MerklePatriciaTrie:
         -------
         bytes
             Reference to created node. 
+
         """
 
         assert len(path_a) != 0 or len(path_b) != 0
