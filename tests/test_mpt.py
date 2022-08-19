@@ -214,7 +214,7 @@ class TestMPT(unittest.TestCase):
 class Test_proof(unittest.TestCase):
     """Test the proof functions of the MPT."""
     
-    def test_proof_one_secure(self):
+    def test_proof_one(self):
         """Test getting the proof of a single key-value pair with trie in secure."""
         storage = {}
         trie = MerklePatriciaTrie(storage, secure=True)
@@ -224,7 +224,7 @@ class Test_proof(unittest.TestCase):
         expected = b'\xffk\xda\xb7Mq>\xbb@\x05\xf8`J!\x08Y\x8e$\xcd\x03\x1b\xe3\xef(\x80\x98\x94WiPf\xbf'
         self.assertEqual(proof, expected, 'Proof does not match expected.')
 
-    def test_proof_many_secure(self):
+    def test_proof_many(self):
         """Test getting the proof of many key-value pairs with trie in non secure."""
         storage = {}
         trie = MerklePatriciaTrie(storage, secure=True)
@@ -243,7 +243,7 @@ class Test_proof(unittest.TestCase):
         for i in range(len(proofs)):
             self.assertEqual(proofs[i], expected[i], 'Proof does not match expected for {}, expected {}, got {}.'.format(data[i], expected[i], proofs[i]))
     
-    def test_proof_lots_secure(self):
+    def test_proof_lots(self):
         """Test getting the proof of many key-value pairs with trie in secure."""
         storage = {}
         numbers = [i for i in range(100)]
@@ -360,3 +360,79 @@ class Test_proof(unittest.TestCase):
         for i in range(len(proofs)):
             self.assertEqual(proofs[i], expected[i], 'Proof does not match expected for {}, expected {}, got {}.'.format(data[i], expected[i], proofs[i]))
     
+    def test_valid(self):
+        """Test if the validation function."""
+        storage = {}
+        trie = MerklePatriciaTrie(storage)
+
+        # Add some data
+        data = [[b'do', b'verb'], [b'dog', b'puppy'], [b'doge', b'coin'], [b'horse', b'stallion']]
+        for kv in data:
+            trie.update(kv[0], kv[1])
+
+        # Get the proofs and validate
+        proofs = [trie.get_proof_of_inclusion(kv[0]) for kv in data]
+        for cnt, p in enumerate(proofs):
+            self.assertEqual(trie.verify_proof_of_inclusion(data[cnt][0], p), True, 'Proof is not valid.')
+
+    # Test if the proof is valid when one point is removed
+    def test_verify_one_point_removed(self):
+        """Test if the proof is still valid after removing one point."""
+        storage = {}
+        trie = MerklePatriciaTrie(storage)
+
+        # Add some data
+        data = [[b'do', b'verb'], [b'dog', b'puppy'], [b'doge', b'coin'], [b'horse', b'stallion']]
+        for kv in data:
+            trie.update(kv[0], kv[1])
+
+        # Get the proofs and validate
+        proof = trie.get_proof_of_inclusion(data[2][0])
+        trie.delete(data[3][0])
+        self.assertEqual(trie.verify_proof_of_inclusion(data[2][0], proof), False, 'Proof should not be valid.')
+
+    # Test if the proof is valid when one point is added
+    def test_verify_one_point_added(self):
+        """Test if the proof is still valid after adding one point."""
+        storage = {}
+        trie = MerklePatriciaTrie(storage)
+
+        # Add some data
+        data = [[b'do', b'verb'], [b'dog', b'puppy'], [b'doge', b'coin'], [b'horse', b'stallion']]
+        for kv in data:
+            trie.update(kv[0], kv[1])
+
+        # Get the proofs and validate
+        proof = trie.get_proof_of_inclusion(data[2][0])
+        trie.update(b'testing', b'testing')
+        self.assertEqual(trie.verify_proof_of_inclusion(data[2][0], proof), False, 'Proof should not be valid.')
+
+    # Test if the proof is valid when one char is removed
+    def test_verify_one_char_removed(self):
+        """Test if the proof is still valid after removing one char from the proof."""
+        storage = {}
+        trie = MerklePatriciaTrie(storage)
+
+        # Add some data
+        data = [[b'do', b'verb'], [b'dog', b'puppy'], [b'doge', b'coin'], [b'horse', b'stallion']]
+        for kv in data:
+            trie.update(kv[0], kv[1])
+
+        # Get the proofs and validate
+        proof = trie.get_proof_of_inclusion(data[2][0])
+        self.assertEqual(trie.verify_proof_of_inclusion(data[2][0], proof[:-1]), False, 'Proof should not be valid.')
+
+    # Test if the proof is valid when one char is added
+    def test_verify_one_char_added(self):
+        """Test if the proof is still valid after adding one char from the proof."""
+        storage = {}
+        trie = MerklePatriciaTrie(storage)
+
+        # Add some data
+        data = [[b'do', b'verb'], [b'dog', b'puppy'], [b'doge', b'coin'], [b'horse', b'stallion']]
+        for kv in data:
+            trie.update(kv[0], kv[1])
+
+        # Get the proofs and validate
+        proof = trie.get_proof_of_inclusion(data[2][0]) + b'0'
+        self.assertEqual(trie.verify_proof_of_inclusion(data[2][0], proof), False, 'Proof should not be valid.')
