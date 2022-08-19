@@ -1,5 +1,6 @@
 try:
-    from mmpt import ModifiedMerklePatriciaTrie
+    from mpt.mmpt import ModifiedMerklePatriciaTrie
+    from mpt.hash import keccak_hash
 except (ImportError, ModuleNotFoundError):
     import sys, os
     #Following lines are for assigning parent directory dynamically.
@@ -7,27 +8,44 @@ except (ImportError, ModuleNotFoundError):
     parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
     sys.path.insert(0, parent_dir_path)
     from src.mpt.mmpt import ModifiedMerklePatriciaTrie
-from Crypto.Hash import keccak
-import random
+    from src.mpt.hash import keccak_hash
+import rlp
 
-
-# Create the storage
 storage = {}
+numbers = [i for i in range(100)]
+data = list(map(lambda x: bytes('{}'.format(x), 'utf-8'), numbers))
 trie = ModifiedMerklePatriciaTrie(storage)
 
-# Insert some data
-trie.update(b'do')
-trie.update(b'dog')
-trie.update(b'doge')
-trie.update(b'horse')
-trie.update(b'dogecoin')
-trie.update(b'dogecoiN')
-trie.update(b'dogfcoin')
-trie.update(b'dogfcoin')
-trie.update(b'dogecoiiin')
+for kv in data:
+    trie.put(kv)
 
-# Get the proof of inclusion for the key.
-proof = trie.get_proof_of_inclusion(b'dogecoin')
-print('Proof: {}'.format(proof))
-print('Proof valid: {}'.format(trie.verify_proof_of_inclusion(b'dogecoin', proof)))
-print('Tree root: {}'.format(trie.root()))
+proofs = [trie.get_proof_of_inclusion(keccak_hash(rlp.encode(v))) for v in data]
+for p in proofs:
+    print(p)
+
+# Create the storage
+#storage = {}
+#trie = ModifiedMerklePatriciaTrie(storage)
+
+# Insert some data
+#data = [b'do', b'dog', b'doge', b'horse']
+
+#for d in data:
+#    trie.put(d)
+
+#trie.put(b'dogecoin')
+#trie.put(b'dogecoiN')
+#trie.put(b'dogfcoin')
+#trie.put(b'dogfcoin')
+#trie.put(b'dogecoiiin')
+
+# Get the proof of inclusion for all the keys
+#proofs = []
+#for d in data:
+#    proofs.append(trie.get_proof_of_inclusion(keccak_hash(rlp.encode(d))))
+#print(proofs)
+
+#proof = trie.get_proof_of_inclusion(trie.get_key(value))
+##print('Proof: {}'.format(proof))
+#print('Proof valid: {}'.format(trie.verify_proof_of_inclusion(trie.get_key(value), proof)))
+#print('Tree root: {}'.format(trie.root()))

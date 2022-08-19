@@ -14,17 +14,17 @@ storage = {}
 trie = ModifiedMerklePatriciaTrie(storage)
 
 # Insert some data
-trie.update(b'do')
-trie.update(b'dog')
-trie.update(b'doge')
-trie.update(b'horse')
+trie.put(b'do')
+trie.put(b'dog')
+trie.put(b'doge')
+trie.put(b'horse')
 
 # Retrieve the data
 old_root = trie.root()
 old_root_hash = trie.root_hash()
 print(old_root_hash)
 
-trie.delete(b'doge')  # Delete one of the datapoints
+trie.delete(trie.get_key(b'doge'))  # Delete one of the datapoints
 
 # Print the old and new root hashes to see if they are different
 print("Root hash is {}".format(old_root_hash.hex()))

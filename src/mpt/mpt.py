@@ -150,7 +150,7 @@ class MerklePatriciaTrie:
 
         self._root = result
 
-    def delete(self, encoded_key):
+    def delete(self, encoded_key, hash_key=True):
         """
         This method removes a value associtated with provided key.
 
@@ -171,7 +171,7 @@ class MerklePatriciaTrie:
         if self._root is None:
             return
 
-        if self._secure:
+        if self._secure and hash_key:
             encoded_key = keccak_hash(encoded_key)
 
         path = NibblePath(encoded_key)
@@ -188,7 +188,7 @@ class MerklePatriciaTrie:
             _, new_root = info
             self._root = new_root
 
-    def get_proof_of_inclusion(self, encoded_key):
+    def get_proof_of_inclusion(self, encoded_key, hash_key=True):
         """
         This method returns a proof of inclusion for a key.
         Proof is a list of nodes that are necessary to reconstruct the trie.
@@ -198,7 +198,7 @@ class MerklePatriciaTrie:
         if self._root is None:
             return
         
-        if self._secure:
+        if self._secure and hash_key:
             encoded_key = keccak_hash(encoded_key)
 
         path = NibblePath(encoded_key)

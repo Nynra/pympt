@@ -14,6 +14,25 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
     IMPORTANT: 
     - The hash of the value is used as key.
     - Keys should not be RLP encoded.
+
+    This means a stored value is stored under the key keccak_hash(rlp.encode(value)).
+
+    Methods
+    -------
+    update(encoded_value)
+        Update the value of the certain key. If the key is not yet in the trie,
+        it is added.
+    get_key(encoded_value)
+        Get the key associated with the given value.
+    get(encoded_key)
+        Get the value associated with the given key.
+    delete(encoded_value)
+        Delete the value from the trie.
+    get_proof_of_inclusion(encoded_key)
+        Get the proof of inclusion for a certain key (and thus also value).
+    verify_proof_of_inclusion(encoded_key, proof)
+        Verify the proof of inclusion for a certain key (and thus also value).
+    
     """
 
     def __init__(self, storage, root=None):
@@ -31,18 +50,7 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
         """
         super().__init__(storage, root, secure=True)
 
-    def get_root_hash(self):
-        """
-        Get the root hash of the trie.
-
-        Returns
-        -------
-            The root hash of the trie.
-
-        """
-        return super().get_root_hash()
-
-    def update(self, encoded_value):
+    def put(self, encoded_value):
         """
         Update the value of the certain key.
 
@@ -57,6 +65,43 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
 
         """
         encoded_value = rlp.encode(encoded_value)
+        super().update(encoded_value, encoded_value)
+
+    def update(self, encoded_value, encoded_old_key):
+        """
+        Update the value of the certain key.
+
+        Doesnt actually update the value but deletes the old key and adds the new key.
+
+        Parameters
+        ----------
+        encoded_value : bytes
+            The value of the key.
+        encoded_old_key : bytes
+            The old key of the value.
+
+        Returns
+        -------
+        None
+
+        """
+        encoded_value = rlp.encode(encoded_value)
+
+        # TODO: Check if the old key is in the trie
+
+        # Check if the new and old key are the same
+        if encoded_old_key == encoded_value:
+            return
+
+        # Delete the old key
+        try:
+            super().delete(encoded_old_key, hash_key=False)
+        except KeyError:
+            # The old key is not in the trie
+            raise KeyError("The old key is not in the trie")
+            pass
+
+        # Add the new key	
         super().update(encoded_value, encoded_value)
 
     def get_key(self, encoded_value):
@@ -74,6 +119,7 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             The key associated with the value.
 
         """
+        # Generate the key dont search for the value
         return keccak_hash(rlp.encode(encoded_value))
 
     def get(self, encoded_key):
@@ -99,30 +145,30 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
 
         return rlp.decode(result_node.data)
 
-    def delete(self, encoded_value):
+    def delete(self, encoded_key):
         """
         Delete the value of the certain key.
 
         Parameters
         ----------
-        encoded_value : bytes
-            The value of the key.
+        encoded_key : bytes
+            The key of the value to be deleted.
 
         Returns
         -------
         None
 
         """
-        super().delete(rlp.encode(encoded_value))
+        super().delete(encoded_key, hash_key=False)
 
-    def get_proof_of_inclusion(self, encoded_value):
+    def get_proof_of_inclusion(self, encoded_key):
         """
         Get the proof of inclusion of the certain key.
 
         Parameters
         ----------
-        encoded_value : bytes
-            The value of the key.
+        encoded_key : bytes
+            The key for wich the proof of inclusion is requested.
 
         Returns
         -------
@@ -130,18 +176,18 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             The proof of inclusion of the certain key.
 
         """
-        return super().get_proof_of_inclusion(rlp.encode(encoded_value))
+        return super().get_proof_of_inclusion(encoded_key, hash_key=False)
 
-    def verify_proof_of_inclusion(self, encoded_value, proof):
+    def verify_proof_of_inclusion(self, encoded_key, proof):
         """
         Verify the proof of inclusion of the certain key.
 
         Parameters
         ----------
-        encoded_value : bytes
-            The value of the key.
+        encoded_key : bytes
+            The key for wich the proof was created.
         proof : Proof
-            The proof of inclusion of the certain key.
+            The proof of inclusion of the key.
 
         Returns
         -------
@@ -149,4 +195,6 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             True if the proof is valid, False otherwise.
 
         """
-        return super().verify_proof_of_inclusion(encoded_value, proof)
+        return super().verify_proof_of_inclusion(encoded_key, proof)
+
+
