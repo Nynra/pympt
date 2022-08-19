@@ -12,6 +12,16 @@ class MerklePatriciaTrie:
     Storage must implement dict-like interface. Any data structure 
     that implements `__getitem__` and `__setitem__` should be OK.
 
+    IMPORTANT: MPT's use the terms path, node_ref, node value a lot
+    and it can cause some confusion.
+    -   path is a sequence of nibbles. The path is used for database lookup
+        and consists of the steps down the tree that are needed to reach the value.
+    -   node_ref is a reference to a node in the storage. The node ref is a 
+        hash of the node itself.
+    -   node is the object that represents a node in the trie. It can be a leaf,
+        an extension or a branch. How many values are stored in a node depends on
+        the node type.
+
     Attributes
     ----------
     _storage: dict-like
@@ -115,34 +125,6 @@ class MerklePatriciaTrie:
 
         return result_node.data
 
-    # Get a Node from the storage.
-    # BUG: #12 Return the node object instead of the raw node.
-    def get_node(self, encoded_key):
-        """
-        This method gets a node from storage.
-        
-        Parameters
-        ----------
-        node_ref: bytes
-            Reference to the node.
-        
-        Returns
-        -------
-        Node
-            Node from storage.
-        """
-        if not self._root:
-            raise KeyError
-
-        if self._secure:
-            encoded_key = keccak_hash(encoded_key)
-
-        path = NibblePath(encoded_key)
-
-
-        # Return the node object instead of the raw node.
-        return self._get_node(self._get(self._root, path))
-
     def update(self, encoded_key, encoded_value):
         """
         This method updates a provided key-value pair into the trie.
@@ -220,8 +202,7 @@ class MerklePatriciaTrie:
             encoded_key = keccak_hash(encoded_key)
 
         path = NibblePath(encoded_key)
-        self.proof = []
-        return self._get_proof_of_inclusion(self._root, path)
+        return self._get_proof_of_inclusion(self._root, path, [])
 
     def verify_proof_of_inclusion(self, encoded_key, proof):
         """
@@ -323,7 +304,7 @@ class MerklePatriciaTrie:
         # TODO: #5 Raise errors with a proper message.
         raise KeyError
 
-    def _get_proof_of_inclusion(self, node_ref, path):
+    def _get_proof_of_inclusion(self, node_ref, path, proof):
         """
         Get proof of inclusion support method.
         
@@ -335,6 +316,8 @@ class MerklePatriciaTrie:
             Reference to a node.
         path: NibblePath
             Path to a value.
+        proof: dict
+            Dictionary with nodes. (empty in the beginning)
             
         Returns
         -------
@@ -350,18 +333,12 @@ class MerklePatriciaTrie:
         # Get the node from the reference
         node = self._get_node(node_ref)
 
-        # If path is empty, our travel is over. Main `get` method 
-        # will check if this node has a value.
-        if len(path) == 0:
-            # Reached the end of the path.
-            return self.proof
-
         if isinstance(node, Leaf):
             # If we've found a leaf, it's either the leaf we're 
             # looking for or wrong leaf.
             if node.path == path:
-                self.proof.append(node.encode())
-                return
+                proof.append(node.encode())
+                return proof
             else:
                 raise KeyError('The leaf key and search key do not match')
 
@@ -369,21 +346,20 @@ class MerklePatriciaTrie:
             # If we've found an extension, we need to go deeper.
             if path.starts_with(node.path):
                 rest_path = path.consume(len(node.path))
-                self.proof.append(node.encode())
-                self._get_proof_of_inclusion(node.next_ref, rest_path)
-                return self.proof
+                proof.append(node.encode())
+                proof = self._get_proof_of_inclusion(node.next_ref, rest_path, proof)
+                return proof
             else:
                 raise KeyError('Something wrong with the path in the extension')
 
         elif type(node) is Branch:
             # If we've found a branch node, go to the appropriate branch.
             branch = node.branches[path.at(0)]
-            self.proof.append(node.encode())
             if len(branch) > 0:
                 node = self._get(branch, path.consume(1))
-                self.proof.append(node.encode())
-                self._get_proof_of_inclusion(node, path)
-                return self.proof
+                proof.append(node.encode())
+                proof = self._get_proof_of_inclusion(node, path, proof)
+                return proof
             else:
                 raise KeyError('Branch slot is empty.')
 
@@ -393,7 +369,7 @@ class MerklePatriciaTrie:
         """
         Verify proof of inclusion support method.
         
-        Used to iterate over the trie and verify a proof of inclusion for a node ref.
+        Verifies a proof of inclusion for a node ref.
         
         Parameters
         ----------
@@ -415,41 +391,12 @@ class MerklePatriciaTrie:
             KeyError is raised if there is no node assotiated with provided key.
         
         """
-        # Get the node from the reference
-        node = self._get_node(node_ref)
-        if node.encode() not in proof:
-            return False
+        # Generate a proof of inclusion for the node ref
+        new_proof = self._get_proof_of_inclusion(node_ref, path, [])
 
-        # If path is empty, our travel is over. Main `get` method 
-        # will check if this node has a value.
-        #if len(path) == 0:
-        #    # Reached the end of the path.
-        #    return True
-
-        if isinstance(node, Leaf):
-            # If we've found a leaf, it's either the leaf we're 
-            # looking for or wrong leaf.
-            if node.path == path:
-                return True
-            else:
-                return False
-
-        elif type(node) is Extension:
-            # If we've found an extension, we need to go deeper.
-            if path.starts_with(node.path):
-                rest_path = path.consume(len(node.path))
-                return self._verify_proof_of_inclusion(node.next_ref, rest_path, proof)
-            else:
-                return False
-
-        elif type(node) is Branch:
-            # If we've found a branch node, go to the appropriate branch.
-            branch = node.branches[path.at(0)]
-            if len(branch) > 0:
-                node = self._get(branch, path.consume(1))
-                return self._verify_proof_of_inclusion(node, path, proof)
-        
-        raise KeyError('Unknown node type {}'.format(node))
+        # Hash the new and old proofs and compare them
+        raise NotImplementedError()
+        return keccak_hash(new_proof) == keccak_hash(proof)
         
 
     def _update(self, node_ref, path, value):

@@ -10,3 +10,8 @@ These are some usefull guides
 
 ### Installation
 The biggest change for a stable tree is using one of the releases of the releases branch. If there are no releases or none that fit you try the nightly rleases or build your own wheel file.
+
+### Sources
+This repo is heavily inspired by other MPT projects:
+- [popzxc/merkle-patricia-trie](https://github.com/popzxc/merkle-patricia-trie)
+- [Tierion/pymerkletools](https://github.com/Tierion/pymerkletools)

@@ -234,9 +234,6 @@ class NibblePath:
             New NibblePath.
         
         """
-        # BUG: #4 bytes_len is not used, should it be? 
-        # Hack to get the length of the path in bytes?
-        bytes_len = (length + 1) / 2
         data = []
 
         is_odd_len = length % 2 == 1

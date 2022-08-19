@@ -20,3 +20,16 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[[tool.pydoc-markdown.loaders]]
+type = "python"
+search_path = [ "../src" ]
+
+[tool.pydoc-markdown.renderer]
+type = "mkdocs"
+
+[[tool.pydoc-markdown.renderer.pages]]
+title = "MPT Documentation"
+name = "index.md"
+contents = [ "src.mpt.*" ]
+
