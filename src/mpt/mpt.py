@@ -1,5 +1,5 @@
 from enum import Enum
-from .hash import keccak_hash
+from .hash import keccak_hash, keccak_hash_list
 from .nibble_path import NibblePath
 from .node import Node, Leaf, Extension, Branch
 
@@ -196,13 +196,17 @@ class MerklePatriciaTrie:
         If you use encoded keys, you should encode it yourself.
         """
         if self._root is None:
-            return []
+            return
 
+        # Check if key is in the trie
+        _ = self.get(encoded_key)
+        
         if self._secure:
             encoded_key = keccak_hash(encoded_key)
 
         path = NibblePath(encoded_key)
-        return self._get_proof_of_inclusion(self._root, path, [])
+        proof =  self._get_proof_of_inclusion(self._root, path, [])
+        return keccak_hash_list(proof)
 
     def verify_proof_of_inclusion(self, encoded_key, proof):
         """
@@ -213,11 +217,8 @@ class MerklePatriciaTrie:
         if self._root is None:
             return False
 
-        if self._secure:
-            encoded_key = keccak_hash(encoded_key)
-
-        path = NibblePath(encoded_key)
-        return self._verify_proof_of_inclusion(self._root, path, proof)
+        new_proof = self.get_proof_of_inclusion(encoded_key)
+        return new_proof == proof
 
     def _get_node(self, node_ref):
         """
@@ -235,9 +236,14 @@ class MerklePatriciaTrie:
         """
         raw_node = None
 
-        if isinstance(node_ref, Extension) or isinstance(node_ref, Leaf):
+        # BUG: #18 Uuuuhm this is a hack. the first if should not be used
+        # If the node_ref is already a node, just return it
+        if isinstance(node_ref, Extension) or isinstance(node_ref, Leaf) \
+                or isinstance(node_ref, Branch):
             return node_ref
-        elif len(node_ref) == 32:
+
+        # Otherwise try to get it from storage or decode it from RLP
+        if len(node_ref) == 32:
             raw_node = self._storage[node_ref]
         else:
             raw_node = node_ref
@@ -281,7 +287,8 @@ class MerklePatriciaTrie:
             if node.path == path:
                 return node
             else:
-                raise KeyError('The leaf key and search key do not match')
+                raise KeyError('The leaf key and search key do not match.'
+                               ' Leaf key: {}, search key: {}'.format(node.path, path))
 
         elif type(node) is Extension:
             # If we've found an extension, we need to go deeper.
@@ -289,7 +296,8 @@ class MerklePatriciaTrie:
                 rest_path = path.consume(len(node.path))
                 return self._get(node.next_ref, rest_path)
             else:
-                raise KeyError('Something wrong with the path in the extension')
+                raise KeyError('Something wrong with the path in the extension.'
+                               ' Extension path: {}, search path: {}'.format(node.path, path))
 
         elif type(node) is Branch:
             # If we've found a branch node, go to the appropriate branch.
@@ -297,7 +305,8 @@ class MerklePatriciaTrie:
             if len(branch) > 0:
                 return self._get(branch, path.consume(1))
             else:
-                raise KeyError('Branch slot is empty.')
+                raise KeyError('Branch slot is empty.'
+                               ' Branch: {}, search path: {}'.format(node.branches, path))
 
         # Raise error if it's a wrong node, extension with different 
         # path or branch node without appropriate branch.
@@ -333,6 +342,11 @@ class MerklePatriciaTrie:
         # Get the node from the reference
         node = self._get_node(node_ref)
 
+        if len(path) == 0:
+            # If path is empty, we've found the node.
+            proof.append(node.encode())
+            return proof
+
         if isinstance(node, Leaf):
             # If we've found a leaf, it's either the leaf we're 
             # looking for or wrong leaf.
@@ -340,7 +354,8 @@ class MerklePatriciaTrie:
                 proof.append(node.encode())
                 return proof
             else:
-                raise KeyError('The leaf key and search key do not match')
+                raise KeyError('The leaf key and search key do not match'
+                               ' Leaf key: {}, search key: {}'.format(node.path, path))
 
         elif type(node) is Extension:
             # If we've found an extension, we need to go deeper.
@@ -350,7 +365,8 @@ class MerklePatriciaTrie:
                 proof = self._get_proof_of_inclusion(node.next_ref, rest_path, proof)
                 return proof
             else:
-                raise KeyError('Something wrong with the path in the extension')
+                raise KeyError('Something wrong with the path in the extension'
+                               ' Extension path: {}, search path: {}'.format(node.path, path))
 
         elif type(node) is Branch:
             # If we've found a branch node, go to the appropriate branch.
@@ -361,7 +377,8 @@ class MerklePatriciaTrie:
                 proof = self._get_proof_of_inclusion(node, path, proof)
                 return proof
             else:
-                raise KeyError('Branch slot is empty.')
+                raise KeyError('Branch slot is empty.'
+                               ' Branch: {}, search path: {}'.format(node.branches, path))
 
         raise KeyError('Unknown node type {}'.format(node))
 
