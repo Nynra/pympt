@@ -1,6 +1,6 @@
 import sys, os
 try:
-    from mpt import MerklePatriciaTrie
+    from mpt.mmpt import ModifiedMerklePatriciaTrie
     from mpt.node import Node
     from mpt.hash import keccak_hash
 except (ImportError, ModuleNotFoundError):
@@ -530,3 +530,172 @@ class Test_proof(unittest.TestCase):
         proof['proof'] += b'0'
         self.assertEqual(trie.verify_proof_of_inclusion(keccak_hash(rlp.encode(data[2])), 
             proof), False, 'Proof should not be valid.')
+
+
+class Test_save_and_load(unittest.TestCase):
+    """Test if the trie can be saved and loaded."""
+
+    def test_save_and_load_one_value(self):
+        """Test if the trie can be saved and loaded with one value."""
+        storage = {}
+        trie = ModifiedMerklePatriciaTrie(storage)
+
+        # Add some data
+        data = [b'do']
+        for kv in data:
+            trie.put(kv)
+
+        # Save the trie
+        pickle_bytes = trie.to_pickle()
+        new_trie = ModifiedMerklePatriciaTrie()
+        new_trie.from_pickle(pickle_bytes)
+
+        # Check if the data is still there
+        for kv in data:
+            self.assertEqual(trie.get(keccak_hash(rlp.encode(kv))), kv, 'Data not found in trie.')
+
+    def test_save_and_load_multiple_values(self):
+        """Test if the trie can be saved and loaded with multiple values."""
+        storage = {}
+        trie = ModifiedMerklePatriciaTrie(storage)
+
+        # Add some data
+        data = [b'do', b'dog', b'doge', b'horse']
+        for kv in data:
+            trie.put(kv)
+
+        # Save the trie
+        pickle_bytes = trie.to_pickle()
+        new_trie = ModifiedMerklePatriciaTrie()
+        new_trie.from_pickle(pickle_bytes)
+
+        # Check if the data is still there
+        for kv in data:
+            self.assertEqual(trie.get(keccak_hash(rlp.encode(kv))), kv, 'Data not found in trie.')
+
+    def test_save_and_load_lot_of_values(self):
+        """Test if the trie can be saved and loaded with lot of values."""
+        storage = {}
+        trie = ModifiedMerklePatriciaTrie(storage)
+
+        # Add some data
+        data = [str(i).encode() for i in range(100)]
+        for kv in data:
+            trie.put(kv)
+
+        # Save the trie
+        pickle_bytes = trie.to_pickle()
+        new_trie = ModifiedMerklePatriciaTrie()
+        new_trie.from_pickle(pickle_bytes)
+
+        # Check if the data is still there
+        for kv in data:
+            self.assertEqual(trie.get(keccak_hash(rlp.encode(kv))), kv, 'Data not found in trie.')
+
+    def test_save_and_load_new_item_to_copy(self):
+        """Test if the roots differ when an item is only added to original."""
+        storage = {}
+        trie = ModifiedMerklePatriciaTrie(storage)
+
+        # Add some data
+        data = [b'do', b'dog', b'doge', b'horse']
+        for kv in data:
+            trie.put(kv)
+
+        # Save the trie
+        pickle_bytes = trie.to_pickle()
+        new_trie = ModifiedMerklePatriciaTrie()
+        new_trie.from_pickle(pickle_bytes)
+
+        # Add new item
+        new_trie.put(b'new')
+
+        self.assertNotEqual(trie.root_hash(), new_trie.root_hash(), 'Root hashes are equal but should not be.')
+    
+    def test_save_and_load_new_item(self):
+        """Test if the roots differ when a new value is added to original and copy."""
+        storage = {}
+        trie = ModifiedMerklePatriciaTrie(storage)
+
+        # Add some data
+        data = [b'do', b'dog', b'doge', b'horse']
+        for kv in data:
+            trie.put(kv)
+
+        # Save the trie
+        pickle_bytes = trie.to_pickle()
+        new_trie = ModifiedMerklePatriciaTrie()
+        new_trie.from_pickle(pickle_bytes)
+
+        # Add new item
+        new_trie.put(b'new')
+        trie.put(b'new')
+
+        self.assertEqual(trie.root_hash(), new_trie.root_hash(), 'Root hashes are not equal but should be.')
+
+    def test_save_and_load_remove_item(self):
+        """Test if the roots differ when an item is removed from original and copy."""
+        storage = {}
+        trie = ModifiedMerklePatriciaTrie(storage)
+
+        # Add some data
+        data = [b'do', b'dog', b'doge', b'horse']
+        for kv in data:
+            trie.put(kv)
+
+        # Save the trie
+        pickle_bytes = trie.to_pickle()
+        new_trie = ModifiedMerklePatriciaTrie()
+        new_trie.from_pickle(pickle_bytes)
+
+        # Remove an item
+        new_trie.delete(keccak_hash(rlp.encode(data[0])))
+        trie.delete(keccak_hash(rlp.encode(data[0])))
+
+        self.assertEqual(trie.root_hash(), new_trie.root_hash(), 'Root hashes are not equal but should be.')
+
+    def test_save_and_load_update_item(self):
+        """Test if the roots differ when an item is updated in original and copy."""
+        storage = {}
+        trie = ModifiedMerklePatriciaTrie(storage)
+
+        # Add some data
+        data = [b'do', b'dog', b'doge', b'horse']
+        for kv in data:
+            trie.put(kv)
+
+        # Save the trie
+        pickle_bytes = trie.to_pickle()
+        new_trie = ModifiedMerklePatriciaTrie()
+        new_trie.from_pickle(pickle_bytes)
+
+        # Update an item
+        new_trie.update(b'new', keccak_hash(rlp.encode(b'dog')))
+        trie.update(b'new', keccak_hash(rlp.encode(b'dog')))
+
+        self.assertEqual(trie.root_hash(), new_trie.root_hash(), 'Root hashes are not equal but should be.')
+
+    def test_proof_on_copy(self):
+        """Test if the proof is correct when the original is modified."""
+        storage = {}
+        trie = ModifiedMerklePatriciaTrie(storage)
+
+        # Add some data
+        data = [b'do', b'dog', b'doge', b'horse']
+        for kv in data:
+            trie.put(kv)
+
+        # Save the trie
+        pickle_bytes = trie.to_pickle()
+        new_trie = ModifiedMerklePatriciaTrie()
+        new_trie.from_pickle(pickle_bytes)
+
+        # Create proof on original
+        proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(data[0])))
+
+        # Add data to the original (invalidates the proof on the original trie)
+        trie.put(b'new')
+
+        # Verify proof on copy
+        self.assertTrue(new_trie.verify_proof_of_inclusion(keccak_hash(rlp.encode(data[0])), proof))
+

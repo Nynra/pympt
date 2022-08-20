@@ -272,6 +272,8 @@ class MerklePatriciaTrie:
         raw_node = None
 
         # BUG: #18 Uuuuhm this is a hack. the first if should not be used
+        # Okey maybe it is alright like this because an RLP encoded node will
+        # still get decoded
         # If the node_ref is already a node, just return it
         if isinstance(node_ref, Extension) or isinstance(node_ref, Leaf) \
                 or isinstance(node_ref, Branch):
@@ -283,6 +285,10 @@ class MerklePatriciaTrie:
         else:
             raw_node = node_ref
         
+        decoded_node = Node.decode(raw_node)
+        if not (isinstance(decoded_node, Extension) or isinstance(decoded_node, Leaf) \
+                or isinstance(decoded_node, Branch)):
+            raise Exception('Invalid node type {}'.format(type(decoded_node)))
         return Node.decode(raw_node)
 
     def _get(self, node_ref, path):

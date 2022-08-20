@@ -1,7 +1,9 @@
 from .mpt import MerklePatriciaTrie
 from .hash import keccak_hash
 from .nibble_path import NibblePath
+from .node import Node, _prepare_reference_for_encoding, _prepare_reference_for_usage
 import rlp
+import pickle
 
 
 class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
@@ -36,7 +38,7 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
     
     """
 
-    def __init__(self, storage, root=None):
+    def __init__(self, storage={}, root=None):
         """
         Initialize the MMPT class.
 
@@ -49,8 +51,62 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             If not None, the root is set to the given root.
         
         """
+        self._type = 'FULL MMPT'
         super().__init__(storage, root, secure=True)
 
+    # SAVING AND LOADING
+    def to_pickle(self):
+        """
+        Convert the trie to a json object.
+        """
+        if self._type == 'FULL MMPT':
+            # TODO: Only encode the node if it isnt already encoded, now it is possibly decoded and encoded again
+            # Get all the nodes (decoded) and RLP encode them
+            storage_list = [_prepare_reference_for_encoding(node) for node in self._storage.values()]
+            content =  {'root': self._root,
+                        'type': self._type,
+                        'storage': storage_list}
+        else:
+            raise NotImplementedError("Saving a {} trie to json is not implemented".format(self.state))
+
+        return pickle.dumps(content)
+
+    def from_pickle(self, json_string):
+        """
+        Initialize the trie from a pickle object.
+        """ 
+        # Unpickle the object
+        binary_string = pickle.loads(json_string)
+        storage_list = binary_string['storage']
+
+        # Load the storage
+        if binary_string['type'] == 'FULL MMPT':
+            storage = {}
+            for encoded_node in storage_list:
+                # Nodes are stored as the RPL encoded version of the full node
+
+                # TODO: Make sure the node is encoded when put into the storage
+                storage[keccak_hash(encoded_node)] = _prepare_reference_for_usage(encoded_node)  # Decode the node from RLP
+
+            self._storage = storage
+            self._root = binary_string['root']
+            # print('Root type = {}'.format(type(self._root)))
+            self._type = binary_string['type']
+        else:
+            raise NotImplementedError("Loading a {} trie from a json object is not implemented".format(json_dict['type']))
+
+    def create_skeleton(self):
+        """
+        Create a skeleton of the trie.
+
+        The skeleton is a trie with only the root node.
+        The root node is the root of the trie.
+        The storage is empty.
+        The state is 'SKELETON MMPT'
+        """
+        raise NotImplementedError("Creating a skeleton is not yet implemented.")
+
+    # TRIE FUNCTINOS
     def put(self, encoded_value):
         """
         Update the value of the certain key.

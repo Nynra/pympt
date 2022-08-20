@@ -9,6 +9,8 @@ except (ImportError, ModuleNotFoundError):
     sys.path.insert(0, parent_dir_path)
     from src.mpt.mmpt import ModifiedMerklePatriciaTrie
     from src.mpt.hash import keccak_hash
+import pickle
+
 
 # Create the storage
 storage = {}
@@ -18,19 +20,14 @@ trie = ModifiedMerklePatriciaTrie(storage)
 trie.put(b'do')
 trie.put(b'dog')
 trie.put(b'doge')
+trie.put(b'doggo')
 trie.put(b'horse')
-trie.put(b'dogecoin')
-trie.put(b'dogecoiN')
-trie.put(b'dogfcoin')
-trie.put(b'dogfcoin')
-trie.put(b'dogecoiiin')
 
-# Get the proof of inclusion for the key
-key = b'dog'
-proof = trie.get_proof_of_inclusion(trie.get_key(key))
+trie_file = trie.to_pickle() # Get the trie in json form
+trie_from_json = ModifiedMerklePatriciaTrie()
+trie_from_json.from_pickle(trie_file)
 
-print('Proof dict:')
-for i, j in proof.items():
-    print(i, ':', j)
-
-print('\nProof valid: {}'.format(trie.verify_proof_of_inclusion(trie.get_key(key), proof)))
+# Get a key from the original and the value from the new trie
+key = trie.get_key(b'doge')
+print('Value in original: {}'.format(trie.get(key)))
+print('Value from copy : {}'.format(trie_from_json.get(key)))
