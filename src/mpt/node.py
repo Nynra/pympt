@@ -51,36 +51,55 @@ class Node():
     """
     EMPTY_HASH = keccak_hash(rlp.encode(b''))
 
-    def decode(encoded_data):
+    @staticmethod
+    def decode(encoded_data, include_data=True):
         """
         Decode the node from RLP.
         
         Parameters
         ----------
         encoded_data : bytes or bytearray
-            Encoded node.
+            RLP encoded node.
+        include_data : bool
+            Whether to include the data in the node. Used for skeleton trie.
             
         Returns
         -------
         Node
             Decoded node.
         """
-        data = rlp.decode(encoded_data)
+        data = rlp.decode(encoded_data)	
 
         assert len(data) == 17 or len(data) == 2   # TODO #1 throw exception
 
         if len(data) == 17:
+            # Its a branch node
             branches = list(map(_prepare_reference_for_usage, data[:16]))
             node_data = data[16]
-            return Branch(branches, node_data)
+            if include_data:
+                return Branch(branches, node_data)
+            elif node_data != None:
+                # Add a marker instead of the data
+                return Branch(branches, b'1')
+            else:
+                return Branch(branches, None)
 
         path, is_leaf = NibblePath.decode_with_type(data[0])
         if is_leaf:
-            return Leaf(path, data[1])
+            # Its a leaf node
+            if include_data:
+                return Leaf(path, data[1])
+            elif data[1] != None:
+                # Add a marker instead of the data
+                return Leaf(path, b'1')
+            else:
+                return Leaf(path, None)
         else:
+            # Its an extension node
             ref = _prepare_reference_for_usage(data[1])
             return Extension(path, ref)
 
+    @staticmethod
     def into_reference(node):
         """
         Returns reference to the given node.
@@ -212,8 +231,8 @@ class Branch(Node):
     """
     Branch class for the mpt tree.
 
-    The branch class is used to store references to other nodes in the tree and is the middle of a path.
-    It is also used to store data in the tree.
+    The branch class is used to store references to other nodes in the tree and 
+    is the middle of a path. It is also used to store data in the tree.
     """
     def __init__(self, branches, data=None):
         """
