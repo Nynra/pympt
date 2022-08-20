@@ -211,7 +211,7 @@ class TestMPT(unittest.TestCase):
             trie.get(b'dog')
 
 
-class Test_proof(unittest.TestCase):
+class Test_proof_of_inclusion(unittest.TestCase):
     """Test the proof functions of the MPT."""
     
     def test_proof_one(self):
