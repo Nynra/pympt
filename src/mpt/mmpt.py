@@ -9,9 +9,8 @@ import pickle
 
 class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
     """
-    The MMPT class is a child of the MPT class and ised to store and verify data
+    The MMPT class is a child of the MPT class and used to store and verify data.
 
-    A child is used instead of modified the parent so all the tests keep working.
     This class uses the rpl encoded hash of the value as key.
 
     IMPORTANT: 
@@ -36,6 +35,10 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
         Get the proof of inclusion for a certain key (and thus also value).
     verify_proof_of_inclusion(encoded_key, proof)
         Verify the proof of inclusion for a certain key (and thus also value).
+    get_proof_of_excllusion(encoded_key)
+        Get the proof of exclusion for a certain key (and thus also value).
+    verify_proof_of_exclusion(encoded_key, proof)
+        Verify the proof of exclusion for a certain key (and thus also value).
     
     """
 
@@ -59,10 +62,14 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
     def to_pickle(self):
         """
         Convert the trie to a json object.
+
+        Returns
+        -------
+        bytes
+            The pickled trie.
+
         """
         if self._type == 'FULL MMPT':
-            # TODO: Only encode the node if it isnt already encoded, now it is possibly decoded and encoded again
-            # Get all the nodes (decoded) and RLP encode them
             storage_list = [_prepare_reference_for_encoding(node) for node in self._storage.values()]
             content =  {'root': self._root,
                         'type': self._type,
@@ -72,27 +79,31 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
 
         return pickle.dumps(content)
 
-    def from_pickle(self, json_string):
+    def from_pickle(self, pickle_data):
         """
         Initialize the trie from a pickle object.
+
+        Parameters
+        ----------
+        pickle_data : bytes
+            The pickle object.
         """ 
         # Unpickle the object
-        binary_string = pickle.loads(json_string)
-        storage_list = binary_string['storage']
+        data = pickle.loads(pickle_data)
+        storage_list = data['storage']
 
         # Load the storage
-        if binary_string['type'] == 'FULL MMPT':
+        if data['type'] == 'FULL MMPT':
             storage = {}
             for encoded_node in storage_list:
                 # Nodes are stored as the RPL encoded version of the full node
                 storage[keccak_hash(encoded_node)] = _prepare_reference_for_usage(encoded_node)  # Decode the node from RLP
 
             self._storage = storage
-            self._root = binary_string['root']
-            # print('Root type = {}'.format(type(self._root)))
-            self._type = binary_string['type']
+            self._root = data['root']
+            self._type = data['type']
         else:
-            raise NotImplementedError("Loading a {} trie from a json object is not implemented".format(binary_string['type']))
+            raise NotImplementedError("Loading a {} trie from a json object is not implemented".format(data['type']))
 
     def create_skeleton(self):
         """
