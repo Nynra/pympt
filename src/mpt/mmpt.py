@@ -93,7 +93,7 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             # print('Root type = {}'.format(type(self._root)))
             self._type = binary_string['type']
         else:
-            raise NotImplementedError("Loading a {} trie from a json object is not implemented".format(json_dict['type']))
+            raise NotImplementedError("Loading a {} trie from a json object is not implemented".format(binary_string['type']))
 
     def create_skeleton(self):
         """
