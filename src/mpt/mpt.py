@@ -4,6 +4,15 @@ from .nibble_path import NibblePath
 from .node import Node, Leaf, Extension, Branch
 
 
+class KeyNotFoundError(Exception):
+    """
+    Exception raised when a key is not found in the trie.
+    """
+
+    def __init__(self, message):
+        super().__init__(message)
+
+
 class MerklePatriciaTrie:
     """
     This class represents a trie.
@@ -213,7 +222,7 @@ class MerklePatriciaTrie:
 
         """
         if self._root is None:
-            return
+            raise ValueError('Cannot generate a proof for empty trie')
         
         if self._secure and hash_key:
             encoded_key = keccak_hash(encoded_key)
@@ -252,6 +261,72 @@ class MerklePatriciaTrie:
 
         path = NibblePath(encoded_key)
         new_proof = self._get_proof_of_inclusion(self._root, path, [])
+        return keccak_hash_list(new_proof) == proof
+
+    def get_proof_of_exclusion(self, encoded_key, hash_key=True):
+        """
+        This method returns a proof of exclusion for a key.
+
+        Proof is a list of nodes that are necessary to reconstruct the trie.
+
+        Note: this method does not RLP-encode the key. 
+        If you use encoded keys, you should encode it yourself.
+
+        Parameters
+        ----------
+        encoded_key: bytes
+            RLP-encoded key.
+        hash_key: bool
+            (Optional) If true, key is hashed using keccak256.
+            If false, key is not hashed. Default is true. Only
+            use false if you are sure that key is already hashed.
+
+        Returns
+        -------
+        proof_hash: bytes
+            Hash of the proof.
+
+        """
+        if self._root is None:
+            raise ValueError('Cannot generate a proof for empty trie')
+        
+        if self._secure and hash_key:
+            encoded_key = keccak_hash(encoded_key)
+
+        path = NibblePath(encoded_key)
+        proof =  self._get_proof_of_exclusion(self._root, path, [])
+        return keccak_hash_list(proof)
+
+    def verify_proof_of_exclusion(self, encoded_key, proof, hash_key=True):
+        """
+        This method verifies a proof of exclusion for a key.
+
+        Note: this method does not RLP-encode the key. 
+        If you use encoded keys, you should encode it yourself.
+
+        Parameters
+        ----------
+        encoded_key: bytes
+            RLP-encoded key.
+        proof: list of bytes
+            Proof of exclusion hash for a key.
+        hash_key: bool
+            (Optional) If true, the key is hashed using keccak256.
+
+        Returns
+        -------
+        bool
+            True if the proof is valid, False otherwise.
+
+        """
+        if self._root is None:
+            return False
+
+        if self._secure and hash_key:
+            encoded_key = keccak_hash(encoded_key)
+
+        path = NibblePath(encoded_key)
+        new_proof = self._get_proof_of_exclusion(self._root, path, [])
         return keccak_hash_list(new_proof) == proof
 
     def _get_node(self, node_ref):
@@ -420,6 +495,82 @@ class MerklePatriciaTrie:
             else:
                 raise KeyError('Branch slot is empty.'
                                ' Branch: {}, search path: {}'.format(node.branches, path))
+
+        raise KeyError('Unknown node type {}'.format(node))
+
+    def _get_proof_of_exclusion(self, node_ref, path, proof):
+        """
+        Get proof of exclusion support method.
+        
+        Used to iterate over the trie and get a proof of exclusion for a node ref.
+        
+        Parameters
+        ----------
+        node_ref: bytes
+            Reference to a node.
+        path: NibblePath
+            Path to a value.
+        proof: dict
+            Dictionary with nodes. (empty in the beginning)
+            
+        Returns
+        -------
+        bytes
+            Raw node associated with provided key.
+            
+        Raises
+        ------
+        KeyError
+            KeyError is raised if there is no node assotiated with provided key.
+        
+        """
+        # Get the node from the reference
+        node = self._get_node(node_ref)
+
+        if len(path) == 0:
+            # If path is empty, we've found the node.
+            proof.append(node.encode())
+            return proof
+
+        if isinstance(node, Leaf):
+            # If we've found a leaf, it's either the leaf we're 
+            # looking for or wrong leaf.
+            if node.path == path:
+                proof.append(node.encode())
+            else:
+                path.offset = 0
+                proof.append(Leaf(path, b'null').encode())
+            return proof
+
+        elif type(node) is Extension:
+            # If we've found an extension, we need to go deeper.
+            if path.starts_with(node.path):
+                rest_path = path.consume(len(node.path))
+                proof.append(node.encode())
+                proof = self._get_proof_of_inclusion(node.next_ref, rest_path, proof)
+            else:
+                path.offset = 0
+                proof.append(Leaf(path, b'null').encode())
+            return proof
+
+        elif type(node) is Branch:
+            # If we've found a branch node, go to the appropriate branch.
+            branch = node.branches[path.at(0)]
+            if len(branch) > 0:
+                # Check if the branch is a leaf.
+                try:
+                    node = self._get(branch, path.consume(1))
+                except KeyError:
+                    path.offset = 0
+                    proof.append(Leaf(path, b'null').encode())
+                    return proof
+
+                proof.append(node.encode())
+                proof = self._get_proof_of_inclusion(node, path, proof)
+            else:
+                path.offset = 0
+                proof.append(Leaf(path, b'null').encode())
+            return proof
 
         raise KeyError('Unknown node type {}'.format(node))
 

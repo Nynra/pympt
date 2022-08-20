@@ -11,12 +11,16 @@ except (ImportError, ModuleNotFoundError):
     from src.mpt.mmpt import ModifiedMerklePatriciaTrie
     from src.mpt.node import Node
     from src.mpt.hash import keccak_hash
+    from src.mpt.proof import Proof
 import rlp
 import unittest
 import random
 
 
-class TestModifiedMerklePatriciaTrie(unittest.TestCase):
+
+class TestMMPT(unittest.TestCase):
+    """Test the ModifiedMerklePatriciaTrie class."""
+
     def test_insert_get_one_short(self):
         """Test inserting one short key-value pair and then getting it."""
         storage = {}
@@ -300,7 +304,49 @@ class TestModifiedMerklePatriciaTrie(unittest.TestCase):
 
 
 class Test_proof(unittest.TestCase):
+    """Test the proof class.""" 
+
+    def test_change_attributes(self):
+        """Test if the proof hash is correct."""
+        trie = ModifiedMerklePatriciaTrie()
+
+        # Add some data
+        trie.put(b'do')
+        trie.put(b'dog')
+        trie.put(b'doge')
+        trie.put(b'horse')
+
+        # Get the proof for the key 'doge'.
+        proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(b'doge')))
+
+        with self.assertRaises(AttributeError):
+            proof.trie_root = b'5'
+        with self.assertRaises(AttributeError):
+            proof.target = b'5'
+        with self.assertRaises(AttributeError):
+            proof.proof = b'5'
+
+
+class Test_proof_of_inclusion(unittest.TestCase):
     """Test the proof functions of the MMPT."""
+
+    def test_proof_on_empty_trie(self):
+        """Test getting the proof of an empty trie."""
+        storage = {}
+        trie = ModifiedMerklePatriciaTrie(storage)
+
+        with self.assertRaises(ValueError):
+            trie.get_proof_of_inclusion(keccak_hash(rlp.encode(b'')))
+
+    def test_root_hash(self):
+        """Test if the root hash of the trie is correct."""
+        storage = {}
+        trie = ModifiedMerklePatriciaTrie(storage)
+
+        trie.put(b'dog')
+        proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(b'dog')))
+        self.assertEqual(proof.trie_root, trie.root_hash(), 
+                        'The root hash in the proof does not mathc the trie root.')
     
     def test_proof_one(self):
         """Test getting the proof of a single key-value pair with trie in secure."""
@@ -310,7 +356,7 @@ class Test_proof(unittest.TestCase):
         trie.put(b'dog')
         proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(b'dog')))
         expected = b']\xa4\x89[\x84\xf4\xadd\x82\x9f\x8a\x96\x92F`\x82\xe6\x00\x05\x1e$\x9b\xf3"\x02\xe5\xe21\x9b\xf6t\xe9'
-        self.assertEqual(proof['proof'], expected, 'Proof does not match expected.')
+        self.assertEqual(proof.proof, expected, 'Proof does not match expected.')
 
     def test_proof_many(self):
         """Test getting the proof of many key-value pairs with trie in non secure."""
@@ -322,7 +368,7 @@ class Test_proof(unittest.TestCase):
             trie.put(kv)
 
         # Generate a proof for each key
-        proofs = [trie.get_proof_of_inclusion(keccak_hash(rlp.encode(kv)))['proof'] for kv in data]
+        proofs = [trie.get_proof_of_inclusion(keccak_hash(rlp.encode(kv))).proof for kv in data]
         expected = [b'8R\xdaE\xcc\x8d\xe7<\xbco]\xfbsy\r\xd12\x9a\xa4\x12\x7f\x9e\x9e4\xa9\xf3w\x8b\x03\x8b\xd0\xd0', 
                     b'\\R\xc1\xcc\xa6p\xae\xd9\xc0\xac\xd9{\x1c\xcc\xe3\x16\n\x98hgJIJ\x92\x1b{!\x8b\x96\xedDr', 
                     b'z_`\xa7\xe8\x9d\xdc\x07\xacjg\x8d;A\x0ef\xe2\xbb\x1e\x94\xa9\xc5\xe8=0r\xde\xf4i\x0e\xf7C', 
@@ -340,7 +386,7 @@ class Test_proof(unittest.TestCase):
         for kv in data:
             trie.put(kv)
 
-        proofs = [trie.get_proof_of_inclusion(keccak_hash(rlp.encode(kv)))['proof'] for kv in data]
+        proofs = [trie.get_proof_of_inclusion(keccak_hash(rlp.encode(kv))).proof for kv in data]
 
         expected = [b'xk\x87?\x90D\xc0\x8d\xda\x07"\xd2T\\\xcabm\xe8%\x91g8L\x8bL\x97\xddfM\x92b\x90',
             b"TQ\x8b>'\\\xfdpjK{i\x84\xf7\xe3k\xb7\xe1,_\xf3\xea\xb4\xed.=~\xd8\xde\x14f\x13",
@@ -458,9 +504,8 @@ class Test_proof(unittest.TestCase):
         # Get the proofs and validate
         for i in range(len(data)):
             proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(data[i])))
-            self.assertTrue(trie.verify_proof_of_inclusion(
-                keccak_hash(rlp.encode(data[i])), proof), 'Proof for {} is not valid.'.format(data[i]))
-
+            self.assertTrue(trie.verify_proof_of_inclusion(proof), 
+                    'Proof for {} is not valid.'.format(data[i]))
 
     # Test if the proof is valid when one point is removed
     def test_verify_one_item_removed(self):
@@ -474,10 +519,10 @@ class Test_proof(unittest.TestCase):
             trie.put(kv)
 
         # Get the proofs and validate
-        proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(b'doge')))
-        trie.delete(keccak_hash(rlp.encode(b'dog')))
+        proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(b'doge'))).proof
+        trie.delete(keccak_hash(rlp.encode(b'do')))
 
-        new_proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(b'doge')))
+        new_proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(b'doge'))).proof
         self.assertNotEqual(new_proof, proof, 'Proof should not be valid.')
 
     # Test if the proof is valid when one point is added
@@ -495,7 +540,7 @@ class Test_proof(unittest.TestCase):
         proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(data[2])))
         trie.put(b'testing')
         with self.assertRaises(KeyError):
-            trie.verify_proof_of_inclusion(keccak_hash(rlp.encode(data[2])), proof) 
+            trie.verify_proof_of_inclusion(proof) 
 
     # Test if the proof is valid when one char is removed
     def test_verify_one_char_removed(self):
@@ -509,14 +554,15 @@ class Test_proof(unittest.TestCase):
             trie.put(kv)
 
         # Get the proofs and validate
-        proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(data[2])))
-        proof['proof'] = proof['proof'][:-1]
-        self.assertEqual(trie.verify_proof_of_inclusion(
-            keccak_hash(rlp.encode(data[2])), proof), False, 'Proof should not be valid.')
+        og_proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(data[2])))
+        proof = Proof(target_key_hash=og_proof.target_key_hash, proof_hash=og_proof.proof[:-1],
+                    root_hash=og_proof.trie_root, type=og_proof.type)
+        self.assertFalse(trie.verify_proof_of_inclusion(proof), 
+                        'Proof should not be valid.')
 
     # Test if the proof is valid when one char is added
     def test_verify_one_char_added(self):
-        """Test if the proof is still valid after adding one char from the proof."""
+        """Test if the proof is still valid after adding one char to the proof."""
         storage = {}
         trie = ModifiedMerklePatriciaTrie(storage)
 
@@ -526,10 +572,11 @@ class Test_proof(unittest.TestCase):
             trie.put(kv)
 
         # Get the proofs and validate
-        proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(data[2])))
-        proof['proof'] += b'0'
-        self.assertEqual(trie.verify_proof_of_inclusion(keccak_hash(rlp.encode(data[2])), 
-            proof), False, 'Proof should not be valid.')
+        og_proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(data[2])))
+        proof = Proof(target_key_hash=og_proof.target_key_hash, proof_hash=og_proof.proof + b'o',
+                    root_hash=og_proof.trie_root, type=og_proof.type)
+        self.assertFalse(trie.verify_proof_of_inclusion(proof), 
+                        'Proof should not be valid.')
 
 
 class Test_save_and_load(unittest.TestCase):
@@ -696,6 +743,10 @@ class Test_save_and_load(unittest.TestCase):
         # Add data to the original (invalidates the proof on the original trie)
         trie.put(b'new')
 
-        # Verify proof on copy
-        self.assertTrue(new_trie.verify_proof_of_inclusion(keccak_hash(rlp.encode(data[0])), proof))
+        # Verify that the proof is invalid on the original trie
+        with self.assertRaises(KeyError):
+            trie.verify_proof_of_inclusion(proof)
+        
+        # Verify proof on the copy
+        self.assertTrue(new_trie.verify_proof_of_inclusion(proof))
 

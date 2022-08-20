@@ -2,6 +2,7 @@ from .mpt import MerklePatriciaTrie
 from .hash import keccak_hash
 from .nibble_path import NibblePath
 from .node import Node, _prepare_reference_for_encoding, _prepare_reference_for_usage
+from .proof import Proof
 import rlp
 import pickle
 
@@ -84,8 +85,6 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             storage = {}
             for encoded_node in storage_list:
                 # Nodes are stored as the RPL encoded version of the full node
-
-                # TODO: Make sure the node is encoded when put into the storage
                 storage[keccak_hash(encoded_node)] = _prepare_reference_for_usage(encoded_node)  # Decode the node from RLP
 
             self._storage = storage
@@ -215,6 +214,7 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
         """
         super().delete(encoded_key, hash_key=False)
 
+    # PROOF FUNCTIONS
     def get_proof_of_inclusion(self, encoded_key):
         """
         Get the proof of inclusion of the certain key.
@@ -230,20 +230,18 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             The proof of inclusion of the certain key.
 
         """
-        return {'root': self.root_hash(),
-                'proof': super().get_proof_of_inclusion(encoded_key, hash_key=False),
-                'target': encoded_key}
+        return Proof(target_key_hash=encoded_key, root_hash=self.root_hash(),
+                     proof_hash=super().get_proof_of_inclusion(encoded_key, hash_key=False),
+                     type='POI')
 
-    def verify_proof_of_inclusion(self, encoded_key, proof):
+    def verify_proof_of_inclusion(self, proof):
         """
         Verify the proof of inclusion of the certain key.
 
         Parameters
         ----------
-        encoded_key : bytes
-            The key for wich the proof was created.
         proof : Proof
-            The proof of inclusion of the key.
+            The proof of inclusion of the certain key.
 
         Returns
         -------
@@ -251,11 +249,53 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             True if the proof is valid, False otherwise.
 
         """
-        if proof['root'] != self.root_hash():
+        if proof.trie_root != self.root_hash():
             raise KeyError("The supplied root is not meant for this trie.")
-        if proof['target'] != encoded_key:
-            raise KeyError('The supplied proof is not meant for the given key.')
-        
-        return super().verify_proof_of_inclusion(encoded_key, proof['proof'], hash_key=False)
+        if proof.type != 'POI':
+            raise KeyError('The supplied proof is not a proof of inclusion.')
 
+        return super().verify_proof_of_inclusion(proof.target, proof.proof, 
+                                                hash_key=False)
+
+    def get_proof_of_exclusion(self, encoded_key):
+        """
+        Get the proof of exclusion for a certain key.
+
+        Parameters
+        ----------
+        encoded_key : bytes
+            The key for wich the proof of exclusion is requested.
+
+        Returns
+        -------
+        proof : Proof
+            The proof of exclusion for the certain key.
+
+        """
+        return Proof(target_key_hash=encoded_key, root_hash=self.root_hash(),
+                     proof_hash=super().get_proof_of_exclusion(encoded_key, hash_key=False),
+                     type='POE')
+
+    def verify_proof_of_exclusion(self, proof):
+        """
+        Verify the proof of exclusion of the certain key.
+
+        Parameters
+        ----------
+        proof : Proof
+            The proof of exclusion of the key.
+
+        Returns
+        -------
+        bool
+            True if the proof is valid, False otherwise.
+
+        """
+        if proof.trie_root != self.root_hash():
+            raise KeyError("The supplied root is not meant for this trie.")
+        if proof.type != 'POE':
+            raise KeyError('The supplied proof is not a proof of inclusion.')
+
+        return super().verify_proof_of_exclusion(proof.target, proof.proof, 
+                                                hash_key=False)
 
