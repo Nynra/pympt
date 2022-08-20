@@ -53,6 +53,17 @@ class Proof():
         self._proof_hash = proof_hash
         self._type = type
 
+    def items(self):
+        """
+        Get the items of the proof.
+        """
+        return [['type', self.type],
+                ['timestamp', self.timestamp], 
+                ['target', self.target], 
+                ['root', self.trie_root], 
+                ['proof', self.proof]]
+
+
     def to_json(self):
         """
         Convert the proof to a json object.

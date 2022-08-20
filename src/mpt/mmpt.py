@@ -85,8 +85,6 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             storage = {}
             for encoded_node in storage_list:
                 # Nodes are stored as the RPL encoded version of the full node
-
-                # TODO: Make sure the node is encoded when put into the storage
                 storage[keccak_hash(encoded_node)] = _prepare_reference_for_usage(encoded_node)  # Decode the node from RLP
 
             self._storage = storage
@@ -275,7 +273,7 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
 
         """
         return Proof(target_key_hash=encoded_key, root_hash=self.root_hash(),
-                     proof_hash=super().get_proof_of_exclusiom(encoded_key, hash_key=False),
+                     proof_hash=super().get_proof_of_exclusion(encoded_key, hash_key=False),
                      type='POE')
 
     def verify_proof_of_exclusion(self, proof):
@@ -293,11 +291,11 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             True if the proof is valid, False otherwise.
 
         """
-        if proof.root_hash != self.root_hash():
+        if proof.trie_root != self.root_hash():
             raise KeyError("The supplied root is not meant for this trie.")
-        if proof.type != 'POI':
+        if proof.type != 'POE':
             raise KeyError('The supplied proof is not a proof of inclusion.')
 
-        return super().verify_proof_of_inclusion(proof.target_hash, proof.proof_hash, 
+        return super().verify_proof_of_exclusion(proof.target, proof.proof, 
                                                 hash_key=False)
 

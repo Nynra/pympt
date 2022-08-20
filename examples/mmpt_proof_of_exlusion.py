@@ -33,4 +33,4 @@ print('Proof dict:')
 for i, j in proof.items():
     print(i, ':', j)
 
-print('\nProof valid: {}'.format(trie.verify_proof_of_exclusion(trie.get_key(key), proof)))
+print('\nProof valid: {}'.format(trie.verify_proof_of_exclusion(proof)))
