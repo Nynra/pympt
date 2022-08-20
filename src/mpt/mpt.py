@@ -295,6 +295,9 @@ class MerklePatriciaTrie:
 
         path = NibblePath(encoded_key)
         proof =  self._get_proof_of_exclusion(self._root, path, [])
+
+        # Add the key to the proof before hashing
+        proof.append(Leaf(path, encoded_key).encode())
         return keccak_hash_list(proof)
 
     def verify_proof_of_exclusion(self, encoded_key, proof, hash_key=True):
@@ -327,6 +330,9 @@ class MerklePatriciaTrie:
 
         path = NibblePath(encoded_key)
         new_proof = self._get_proof_of_exclusion(self._root, path, [])
+
+        # Add the key to the proof before hashing
+        new_proof.append(Leaf(path, encoded_key).encode())
         return keccak_hash_list(new_proof) == proof
 
     def _get_node(self, node_ref):
