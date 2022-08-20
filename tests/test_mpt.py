@@ -213,6 +213,14 @@ class TestMPT(unittest.TestCase):
 
 class Test_proof_of_inclusion(unittest.TestCase):
     """Test the proof functions of the MPT."""
+
+    def test_proof_on_empty_trie(self):
+        """Test getting the proof of an empty trie."""
+        storage = {}
+        trie = MerklePatriciaTrie(storage)
+
+        with self.assertRaises(ValueError):
+            trie.get_proof_of_inclusion(b'')
     
     def test_proof_one(self):
         """Test getting the proof of a single key-value pair with trie in secure."""
@@ -373,7 +381,7 @@ class Test_proof_of_inclusion(unittest.TestCase):
         # Get the proofs and validate
         proofs = [trie.get_proof_of_inclusion(kv[0]) for kv in data]
         for cnt, p in enumerate(proofs):
-            self.assertEqual(trie.verify_proof_of_inclusion(data[cnt][0], p), True, 'Proof is not valid.')
+            self.assertTrue(trie.verify_proof_of_inclusion(data[cnt][0], p), 'Proof is not valid.')
 
     # Test if the proof is valid when one point is removed
     def test_verify_one_point_removed(self):
@@ -389,7 +397,7 @@ class Test_proof_of_inclusion(unittest.TestCase):
         # Get the proofs and validate
         proof = trie.get_proof_of_inclusion(data[2][0])
         trie.delete(data[3][0])
-        self.assertEqual(trie.verify_proof_of_inclusion(data[2][0], proof), False, 'Proof should not be valid.')
+        self.assertFalse(trie.verify_proof_of_inclusion(data[2][0], proof), 'Proof should not be valid.')
 
     # Test if the proof is valid when one point is added
     def test_verify_one_point_added(self):

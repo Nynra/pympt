@@ -213,7 +213,7 @@ class MerklePatriciaTrie:
 
         """
         if self._root is None:
-            return
+            raise ValueError('Cannot generate a proof for empty trie')
         
         if self._secure and hash_key:
             encoded_key = keccak_hash(encoded_key)

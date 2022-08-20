@@ -11,9 +11,11 @@ except (ImportError, ModuleNotFoundError):
     from src.mpt.mmpt import ModifiedMerklePatriciaTrie
     from src.mpt.node import Node
     from src.mpt.hash import keccak_hash
+    from src.mpt.proof import Proof
 import rlp
 import unittest
 import random
+
 
 
 class TestMMPT(unittest.TestCase):
@@ -301,8 +303,40 @@ class TestMMPT(unittest.TestCase):
         self.assertEqual(trie.get(keccak_hash(rlp.encode(b'dog'))), b'dog')
 
 
+class Test_proof(unittest.TestCase):
+    """Test the proof class.""" 
+
+    def test_change_attributes(self):
+        """Test if the proof hash is correct."""
+        trie = ModifiedMerklePatriciaTrie()
+
+        # Add some data
+        trie.put(b'do')
+        trie.put(b'dog')
+        trie.put(b'doge')
+        trie.put(b'horse')
+
+        # Get the proof for the key 'doge'.
+        proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(b'doge')))
+
+        with self.assertRaises(AttributeError):
+            proof.trie_root = b'5'
+        with self.assertRaises(AttributeError):
+            proof.target = b'5'
+        with self.assertRaises(AttributeError):
+            proof.proof = b'5'
+
+
 class Test_proof_of_inclusion(unittest.TestCase):
     """Test the proof functions of the MMPT."""
+
+    def test_proof_on_empty_trie(self):
+        """Test getting the proof of an empty trie."""
+        storage = {}
+        trie = ModifiedMerklePatriciaTrie(storage)
+
+        with self.assertRaises(ValueError):
+            trie.get_proof_of_inclusion(keccak_hash(rlp.encode(b'')))
 
     def test_root_hash(self):
         """Test if the root hash of the trie is correct."""
@@ -486,7 +520,7 @@ class Test_proof_of_inclusion(unittest.TestCase):
 
         # Get the proofs and validate
         proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(b'doge'))).proof
-        trie.delete(keccak_hash(rlp.encode(b'dog')))
+        trie.delete(keccak_hash(rlp.encode(b'do')))
 
         new_proof = trie.get_proof_of_inclusion(keccak_hash(rlp.encode(b'doge'))).proof
         self.assertNotEqual(new_proof, proof, 'Proof should not be valid.')
