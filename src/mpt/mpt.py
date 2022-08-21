@@ -296,6 +296,11 @@ class MerklePatriciaTrie:
         path = NibblePath(encoded_key)
         proof =  self._get_proof_of_exclusion(self._root, path, [])
 
+        # Check if the last node is indeed a null leaf node
+        if Node.decode(proof[-1]).data != b'null':
+            raise KeyError('Last node in the proof is not a null leaf node, This'
+                             ' means the key is present in the trie.')
+
         # Add the key to the proof before hashing
         proof.append(Leaf(path, encoded_key).encode())
         return keccak_hash_list(proof)
