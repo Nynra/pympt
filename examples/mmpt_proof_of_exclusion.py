@@ -9,6 +9,7 @@ except (ImportError, ModuleNotFoundError):
     sys.path.insert(0, parent_dir_path)
     from src.mpt.mmpt import ModifiedMerklePatriciaTrie
     from src.mpt.hash import keccak_hash
+import rlp
 
 # Create the storage
 storage = {}
@@ -26,11 +27,11 @@ trie.put(b'dogfcoin')
 trie.put(b'dogecoiiin')
 
 # Get the proof of inclusion for the key
-key = b'dog'
-proof = trie.get_proof_of_inclusion(trie.get_key(key))
+key = b'wolf'
+proof = trie.get_proof_of_exclusion(trie.get_key(key))
 
-print('Proof dict:')
+# print('Proof dict:')
 for i, j in proof.items():
-    print(i, ':', j)
+   print(i, ':', j)
 
-print('\nProof valid: {}'.format(trie.verify_proof_of_inclusion(proof)))
+print('\nProof valid: {}'.format(trie.verify_proof_of_exclusion(proof)))
