@@ -9,7 +9,7 @@ These are some usefull guides
 - [Data structure in Ethereum | Episode 1+: Compact (Hex-prefix) encoding.](https://medium.com/coinmonks/data-structure-in-ethereum-episode-1-compact-hex-prefix-encoding-12558ae02791)
 - [Data structure in Ethereum | Episode 2: Radix trie and Merkle trie.](https://medium.com/coinmonks/data-structure-in-ethereum-episode-2-radix-trie-and-merkle-trie-d941d0bfd69a)
 - [Data structure in Ethereum | Episode 3: Patricia trie.](https://medium.com/coinmonks/data-structure-in-ethereum-episode-3-patricia-trie-b7b0ccddd32f)
-
+- [MPT implementation](https://medium.com/codechain/modified-merkle-patricia-trie-how-ethereum-saves-a-state-e6d7555078dd)
 ### Installation
 The biggest chance for a stable library is using one of the releases on the releases branch. If there are no releases or none that fit you, try the nightly rleases or build your own wheel file. Watch out when using nightly releases, this branch is used for adding experimental functions and may not work as expected
 
