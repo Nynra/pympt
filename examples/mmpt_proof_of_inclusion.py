@@ -1,6 +1,5 @@
 try:
     from mpt.mmpt import ModifiedMerklePatriciaTrie
-    from mpt.hash import keccak_hash
 except (ImportError, ModuleNotFoundError):
     import sys, os
     #Following lines are for assigning parent directory dynamically.
@@ -8,7 +7,6 @@ except (ImportError, ModuleNotFoundError):
     parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
     sys.path.insert(0, parent_dir_path)
     from src.mpt.mmpt import ModifiedMerklePatriciaTrie
-    from src.mpt.hash import keccak_hash
 
 # Create the storage
 storage = {}
@@ -33,4 +31,5 @@ print('Proof dict:')
 for i, j in proof.items():
     print(i, ':', j)
 
-print('\nProof valid: {}'.format(trie.verify_proof_of_inclusion(proof)))
+print('\nProof valid: {}'.format(trie.verify_proof_of_inclusion(trie.root(), proof)))
+

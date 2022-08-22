@@ -22,5 +22,5 @@ trie.update(b'horse', b'stallion')
 # Get the proof of inclusion for the key.
 proof = trie.get_proof_of_exclusion(b'wolf')
 print('Proof: {}'.format(proof))
-print('Proof valid: {}'.format(trie.verify_proof_of_exclusion(b'wolf', proof)))
+print('Proof valid: {}'.format(trie.verify_proof_of_exclusion(trie._root, b'wolf', proof)))
 print('Tree root: {}'.format(trie.root()))
