@@ -296,7 +296,7 @@ class MerklePatriciaTrie:
                              ' means the key is present in the trie.')
         return proof
 
-    def verify_proof_of_exclusion(self, trie_root, encoded_key, proof, hash_key=True):
+    def verify_proof_of_exclusion(self, encoded_key, proof, hash_key=True):
         """
         This method verifies a proof of exclusion for a key.
 
@@ -321,9 +321,6 @@ class MerklePatriciaTrie:
         if self._root is None:
             raise ValueError('Cannot verify a proof for empty trie')
 
-        if self._root != trie_root:
-            raise ValueError('Trie root is not equal to provided root')
-
         # Check if the last node is the null node
         if Node.decode(proof[-1]).data != b'null':
             return False
@@ -339,7 +336,7 @@ class MerklePatriciaTrie:
             print(type(encoded_node))
             proof_storage[Node.into_reference(Node.decode(encoded_node))] = encoded_node
 
-        result, keys_left = self._verify_proof_of_exclusion(trie_root, NibblePath(encoded_key), proof_storage)
+        result, keys_left = self._verify_proof_of_exclusion(self._root, NibblePath(encoded_key), proof_storage)
         if len(keys_left.values()) == 0 and result:
             return True
         else:
@@ -476,6 +473,7 @@ class MerklePatriciaTrie:
         if len(path) == 0:
             # If path is empty, we've found the node.
             # The node doesnt have to be a leaf.
+            proof.append(node.encode())
             return proof
 
         if isinstance(node, Leaf):
@@ -502,9 +500,8 @@ class MerklePatriciaTrie:
             # If we've found a branch node, go to the appropriate branch.
             branch = node.branches[path.at(0)]
             if len(branch) > 0:
-                #proof.append(node.encode())
-                node = self._get(branch, path.consume(1))
-                return self._get_proof_of_inclusion(node, path, proof)
+                proof.append(node.encode())
+                return self._get_proof_of_inclusion(branch, path.consume(1), proof)
             else:
                 raise BranchPathError('Branch slot is empty.'
                                ' Branch: {}, search path: {}'.format(node.branches, path))

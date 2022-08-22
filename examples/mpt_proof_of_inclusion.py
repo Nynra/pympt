@@ -13,17 +13,6 @@ import pickle
 # Create the storage
 storage = {}
 trie = MerklePatriciaTrie(storage)
-
-#data = [[b'do', b'verb'], [b'dog', b'puppy'], [b'doge', b'coin'], [b'horse', b'stallion']]
-#for k in data:
-#    trie.update(k[0], k[1])
-
-#proofs = []
-#for kv in data:
-#    proofs.append(trie.get_proof_of_inclusion(kv[0]))
-
-#with open('tests/test_proofs/proof_valid.pkl', 'wb') as f:
-#    pickle.dump(proofs, f)
     
 # Insert some data
 trie.update(b'do', b'verb')
