@@ -307,6 +307,6 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
         if proof.type != 'POE':
             raise KeyError('The supplied proof is not a proof of inclusion.')
 
-        return super().verify_proof_of_exclusion(proof.trie_root, proof.target, proof.proof, 
+        return super().verify_proof_of_exclusion(proof.target, proof.proof, 
                                                 hash_key=False)
 

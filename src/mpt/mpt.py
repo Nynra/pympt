@@ -289,10 +289,11 @@ class MerklePatriciaTrie:
 
         proof = self._get_proof_of_exclusion(self._root, NibblePath(encoded_key), [])
 
+        print(type(Node.decode(proof[-1])))
         # Check if the last node is indeed a null leaf node
         if isinstance(Node.decode(proof[-1]), Extension):
             # Extenstions cant hold data
-            # TODO: Find a way to verify the last node when it is an extension
+            # TODO: #33 Find a way to verify the last node when it is an extension
             pass
         elif Node.decode(proof[-1]).data != b'null':
             raise PoeError('Last node in the proof is not a null leaf node, This'
@@ -326,6 +327,7 @@ class MerklePatriciaTrie:
 
         # Check if the last node is the null node
         if isinstance(Node.decode(proof[-1]), Extension):
+            # TODO: #33 Find a way to verify the last node when it is an extension
             pass
         elif Node.decode(proof[-1]).data != b'null':
             return False
@@ -342,7 +344,7 @@ class MerklePatriciaTrie:
             proof_storage[Node.into_reference(Node.decode(encoded_node))] = encoded_node
 
         result, keys_left = self._verify_proof_of_exclusion(self._root, NibblePath(encoded_key), proof_storage)
-        if len(keys_left.values()) == 0 and result:
+        if len(keys_left.keys()) == 0 and result:
             return True
         else:
             return False
@@ -543,7 +545,10 @@ class MerklePatriciaTrie:
         if not (isinstance(node_ref, Leaf) or isinstance(node_ref, Extension) or isinstance(node_ref, Branch)):
             # Otherwise try to get it from storage or decode it from RLP
             if len(node_ref) == 32:
-                raw_node = proof_storage[node_ref]
+                try:
+                    raw_node = proof_storage[node_ref]
+                except KeyError:
+                    return False
             else:
                 raw_node = node_ref
             node = Node.decode(raw_node)
@@ -1023,7 +1028,7 @@ class MerklePatriciaTrie:
             if path == node.path:
                 return MerklePatriciaTrie._DeleteAction.DELETED, None
             else:
-                raise LeafPathError("Incorrect path provided")
+                raise LeafPathError("Incorrect or non existing path provided")
 
         elif type(node) == Extension:
             # Extension node can't be removed directly, it passes delete request to the next node.
