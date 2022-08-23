@@ -9,7 +9,7 @@ except (ImportError, ModuleNotFoundError):
     sys.path.insert(0, parent_dir_path)
     from src.mpt.mpt import MerklePatriciaTrie
     from src.mpt.node import Node
-    from src.mpt.errors import InvalidNodeError, LeafPathError, ExtensionPathError, BranchPathError, KeyNotFoundError
+    from src.mpt.errors import InvalidNodeError, LeafPathError, ExtensionPathError, BranchPathError, KeyNotFoundError, PoeError, PoiError
 import rlp
 import unittest
 import random
@@ -378,7 +378,7 @@ class Test_proof_of_exclusion(unittest.TestCase):
             trie.update(kv[0], kv[1])
 
         for kv in data:
-            with self.assertRaises(KeyError):
+            with self.assertRaises(PoeError):
                 # An error should be raises because the key is in the trie
                 _ = trie.get_proof_of_exclusion(kv[0])
 
@@ -389,8 +389,12 @@ class Test_proof_of_exclusion(unittest.TestCase):
 
         trie.update(b'dog', b'puppy')
         proof = trie.get_proof_of_exclusion(b'wolf')
-        expected = b'z\xd6H6`\xe2\xee\xb6\t\xc5\xdb\xf5\xc7\xe4\x1f\xbc)\x99\xb5\xbf\x06pBLb\xbd+\xc1>\xac\xb6\xca'
-        self.assertEqual(proof, expected, 'Proof does not match expected.')
+        expected = [b'\xe7\xa1 \n$\xb3io\xc1\xb4H\x15\xc86\xb1\xf5\x03\xc9\x06q\x14"w\x1b&\xbc\xcbM\xb6\xdd1_u\x9b.\x84null']
+        
+        # Compare the components of the proofs
+        for i in range(len(proof)):
+            for j in range(len(proof[i])):
+                self.assertEqual(proof[i][j], expected[i][j])
    
     def test_proof_many(self):
         """Test getting the proof of many key-value pairs with trie in non secure."""

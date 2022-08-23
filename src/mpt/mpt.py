@@ -290,8 +290,11 @@ class MerklePatriciaTrie:
         proof = self._get_proof_of_exclusion(self._root, NibblePath(encoded_key), [])
 
         # Check if the last node is indeed a null leaf node
-        print(Node.decode(proof[-1]).data)
-        if Node.decode(proof[-1]).data != b'null':
+        if isinstance(Node.decode(proof[-1]), Extension):
+            # Extenstions cant hold data
+            # TODO: Find a way to verify the last node when it is an extension
+            pass
+        elif Node.decode(proof[-1]).data != b'null':
             raise PoeError('Last node in the proof is not a null leaf node, This'
                              ' means the key is present in the trie.')
         return proof
@@ -322,7 +325,9 @@ class MerklePatriciaTrie:
             raise ValueError('Cannot verify a proof for empty trie')
 
         # Check if the last node is the null node
-        if Node.decode(proof[-1]).data != b'null':
+        if isinstance(Node.decode(proof[-1]), Extension):
+            pass
+        elif Node.decode(proof[-1]).data != b'null':
             return False
 
         if self._secure and hash_key:
@@ -653,6 +658,7 @@ class MerklePatriciaTrie:
                 return self._get_proof_of_exclusion(node.next_ref, rest_path, proof)
             else:
                 # If the path doesnt match the end of the path has been reached
+                # BUG: Find a way to add a last node with data 'null'
                 proof.append(node.encode())
                 return proof
 
