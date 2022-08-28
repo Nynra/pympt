@@ -147,6 +147,49 @@ class MerklePatriciaTrie:
 
         self._root = result
 
+    # Find out if the key is in the trie
+    def contains(self, key):
+        if not self._root:
+            raise ValueError("Trie is empty")
+
+        if self._secure:
+            key = keccak_hash(key)
+    
+        path = NibblePath(key)
+        node = self._contains(self._root, path)
+
+        # If the node is a branch check if i thas a value
+        if isinstance(node, Branch):
+            if node.data != None:
+                return True
+            else:
+                return False
+
+        # If the node is an extension the key is not in the trie
+        # Extension nodes dont hold data
+        if isinstance(node, Extension):
+            return False
+        
+        # If the node is a leaf the key is in the trie
+        if isinstance(node, Leaf):
+            if node.path == path:
+                return True
+            else:
+                return False
+            
+            
+            
+        else:
+            # Path doesnt match so key is not in the trie
+            return False
+
+        raise Exception("This should never happen")
+
+
+    def __len__(self):
+        """Return the number of nodes in the trie."""
+        return len(self._storage.keys())
+
     def delete(self, encoded_key, hash_key=True):
         """
         This method removes a value associtated with provided key.
@@ -443,6 +486,46 @@ class MerklePatriciaTrie:
             else:
                 raise BranchPathError('Branch slot is empty.'
                                ' Branch: {}, search path: {}'.format(node.branches, path))
+
+        raise InvalidNodeError('Invalid node type {}'.format(type(node)))
+
+    def _contains(self, node_ref, path):
+        """
+        contains support method.
+        
+        Only returns the node as close to the end of the path as possible.
+        The main contains method will check if this node has a value, and 
+        if this value is the one we're looking for.
+        """
+        node = self._get_node(node_ref)
+
+        # If path is empty, our travel is over. Main `get` method 
+        # will check if this node has a value.
+        if len(path) == 0:
+            return node
+
+        if type(node) is Leaf:
+            # If we've found a leaf, it's either the leaf we're 
+            # looking for or wrong leaf.(we hope its the wrong leaf but
+            # that is up to the main method).
+            return node
+
+        elif type(node) is Extension:
+            # If we've found an extension, we need to go deeper.
+            if path.starts_with(node.path):
+                rest_path = path.consume(len(node.path))
+                return self._contains(node.next_ref, rest_path)
+            else:
+                return node
+
+        elif type(node) is Branch:
+            # If we've found a branch node, go to the appropriate branch.
+            branch = node.branches[path.at(0)]
+            if len(branch) > 0:
+                return self._contains(branch, path.consume(1))
+            else:
+                # This is the furthest node we can go.
+                return node
 
         raise InvalidNodeError('Invalid node type {}'.format(type(node)))
 

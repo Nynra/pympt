@@ -214,6 +214,46 @@ class TestMPT(unittest.TestCase):
         with self.assertRaises(KeyNotFoundError):
             trie.get(b'dog')
 
+    def test_contains(self):
+        """Test checking if a key is in the trie."""
+        storage = {}
+
+        trie = MerklePatriciaTrie(storage)
+
+        trie.update(b'do', b'verb')
+        trie.update(b'dog', b'puppy')
+        trie.update(b'doge', b'coin')
+        trie.update(b'horse', b'stallion')
+
+        # Test exising keys
+        self.assertTrue(trie.contains(b'do'))
+        self.assertTrue(trie.contains(b'dog'))
+        self.assertTrue(trie.contains(b'doge'))
+        self.assertTrue(trie.contains(b'horse'))
+
+        # Test non-existing keys
+        self.assertFalse(trie.contains(b'horse2'))
+        self.assertFalse(trie.contains(b'doe'))
+        self.assertFalse(trie.contains(b'dogi'))
+
+    def test_contains_empty(self):
+        """Test checking if a key is in the trie."""
+        storage = {}
+
+        trie = MerklePatriciaTrie(storage)
+
+        with self.assertRaises(ValueError):
+            _ = trie.contains(b'do')
+
+        with self.assertRaises(ValueError):
+            _ = trie.contains(b'dog')
+
+        with self.assertRaises(ValueError):
+            _ = trie.contains(b'doge')
+
+        with self.assertRaises(ValueError):
+            _ = trie.contains(b'horse')
+
 
 class Test_proof_of_inclusion(unittest.TestCase):
     """Test the proof functions of the MPT."""

@@ -4,14 +4,11 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="eth_mpt",
-    version="0.2.0",
-    author="Igor Aleksanov",
-    author_email="popzxc@yandex.com",
+    name="pympt",
     description="A simlpe Merkle Patricia Trie implementation",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/popzxc/merkle-patricia-trie",
+    url="https://github.com/Nynra/pympt",
     packages=setuptools.find_packages(),
     install_requires=[
         'cytoolz==0.9.0.1',
@@ -25,7 +22,6 @@ setuptools.setup(
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-        "Topic :: Security :: Cryptography",
+        "Topic :: Security :: Cryptography"
     ],
 )
