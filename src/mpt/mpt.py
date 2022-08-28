@@ -193,7 +193,7 @@ class MerklePatriciaTrie:
         """Return the number of nodes in the trie."""
         return len(self._storage.keys())
 
-    def delete(self, encoded_key, hash_key=True):
+    def delete(self, encoded_key):
         """
         This method removes a value associtated with provided key.
 
@@ -218,7 +218,7 @@ class MerklePatriciaTrie:
         if self._root is None:
             raise ValueError("Trie is empty")
 
-        if self._secure and hash_key:
+        if self._secure:
             encoded_key = keccak_hash(encoded_key)
 
         path = NibblePath(encoded_key)
@@ -235,7 +235,7 @@ class MerklePatriciaTrie:
             _, new_root = info
             self._root = new_root
 
-    def get_proof_of_inclusion(self, encoded_key, hash_key=True):
+    def get_proof_of_inclusion(self, encoded_key):
         """
         This method returns a proof of inclusion for a key.
 
@@ -262,12 +262,12 @@ class MerklePatriciaTrie:
         if self._root is None:
             raise ValueError('Cannot generate a proof for empty trie')
         
-        if self._secure and hash_key:
+        if self._secure:
             encoded_key = keccak_hash(encoded_key)
 
         return self._get_proof_of_inclusion(self._root, NibblePath(encoded_key), [])
 
-    def verify_proof_of_inclusion(self, encoded_key, proof, hash_key=True):
+    def verify_proof_of_inclusion(self, encoded_key, proof):
         """
         This method verifies a proof of inclusion for a key.
 
@@ -296,7 +296,7 @@ class MerklePatriciaTrie:
         if self.root_hash() != keccak_hash(proof[0]):
             return False
 
-        if self._secure and hash_key:
+        if self._secure:
             encoded_key = keccak_hash(encoded_key)
 
         # Recreate a partial trie from the proof and walk down from root to taget
@@ -307,7 +307,7 @@ class MerklePatriciaTrie:
 
         return self._verify_proof_of_inclusion(self._root, NibblePath(encoded_key), proof_storage)
 
-    def get_proof_of_exclusion(self, encoded_key, hash_key=True):
+    def get_proof_of_exclusion(self, encoded_key):
         """
         This method returns a proof of exclusion for a key.
 
@@ -333,13 +333,13 @@ class MerklePatriciaTrie:
         """
         if self._root is None:
             raise ValueError('Cannot generate a proof for empty trie')
-        
-        if self._secure and hash_key:
-            encoded_key = keccak_hash(encoded_key)
 
         # Check if the key is in the trie
-        if self.contains(encoded_key, hash_key=False):
+        if self.contains(encoded_key):
             raise PoeError('Cannot generate a proof for a key that is in the trie')
+        
+        if self._secure:
+            encoded_key = keccak_hash(encoded_key)
 
         path = NibblePath(encoded_key)
         node, proof = self._get_proof_of_exclusion(self._root, path, [])
@@ -372,7 +372,7 @@ class MerklePatriciaTrie:
 
         raise Exception("This should never happen")
 
-    def verify_proof_of_exclusion(self, encoded_key, proof, hash_key=True):
+    def verify_proof_of_exclusion(self, encoded_key, proof):
         """
         This method verifies a proof of exclusion for a key.
 
@@ -404,7 +404,7 @@ class MerklePatriciaTrie:
         if Node.decode(proof[-1]).data != b'null':
             return False
 
-        if self._secure and hash_key:
+        if self._secure:
             encoded_key = keccak_hash(encoded_key)
 
         # Recreate a partial trie from the proof and walk down from root to taget

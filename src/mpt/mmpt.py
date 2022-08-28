@@ -11,22 +11,12 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
     """
     The MMPT class is a child of the MPT class and used to store and verify data.
 
-    This class uses the rpl encoded hash of the value as key.
-
-    IMPORTANT: 
-    - The hash of the value is used as key.
-    - Keys should not be RLP encoded when passed to a function.
-
     This means a stored value is stored under the key keccak_hash(rlp.encode(value)).
 
     Methods
     -------
     update(encoded_value, encoded_old_key)
-        Update the value of the certain key. 
-    get_key(encoded_value)
-        Get the key associated with the given value.
-    put(encoded_value)
-        Put the value in the trie.
+        Update the value of the certain key. If the key does not exist, it is created.
     get(encoded_key)
         Get the value associated with the given key.
     delete(encoded_value)
@@ -39,6 +29,10 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
         Get the proof of exclusion for a certain key (and thus also value).
     verify_proof_of_exclusion(encoded_key, proof)
         Verify the proof of exclusion for a certain key (and thus also value).
+    to_pickle()
+        Convert the trie to a pickle object.
+    from_pickle(pickle_data)
+        Initialize the trie from a pickle object.
     
     """
 
@@ -116,123 +110,14 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
         """
         raise NotImplementedError("Creating a skeleton is not yet implemented.")
 
-    # TRIE FUNCTINOS
-    def put(self, encoded_value):
-        """
-        Update the value of the certain key.
-
-        Parameters
-        ----------
-        encoded_value : bytes
-            The value of the key.
-
-        Returns
-        -------
-        None
-
-        """
-        encoded_value = rlp.encode(encoded_value)
-        super().update(encoded_value, encoded_value)
-
-    def update(self, encoded_value, encoded_old_key):
-        """
-        Update the value of the certain key.
-
-        Doesnt actually update the value but deletes the old key and adds the new key.
-
-        Parameters
-        ----------
-        encoded_value : bytes
-            The value of the key.
-        encoded_old_key : bytes
-            The old key of the value.
-
-        Returns
-        -------
-        None
-
-        """
-        encoded_value = rlp.encode(encoded_value)
-        # Check if the new and old key are the same
-        if encoded_old_key == encoded_value:
-            return
-
-        # Delete the old key
-        try:
-            super().delete(encoded_old_key, hash_key=False)
-        except KeyError:
-            # The old key is not in the trie
-            raise KeyError("The old key is not in the trie")
-            pass
-
-        # Add the new key	
-        super().update(encoded_value, encoded_value)
-
-    def get_key(self, encoded_value):
-        """
-        Get the key associated with the given value.
-
-        Parameters
-        ----------
-        encoded_value : bytes
-            The value associated with the key.
-
-        Returns
-        -------
-        bytes
-            The key associated with the value.
-
-        """
-        # Generate the key dont search for the value
-        return keccak_hash(rlp.encode(encoded_value))
-
-    def get(self, encoded_key):
-        """
-        Get the value associated with the given key.
-
-        Parameters
-        ----------
-        encoded_key : bytes
-            The key associated with the value.
-
-        Returns
-        -------
-        bytes
-            The value associated with the key.
-
-        """
-        if not self._root:
-            raise KeyError
-
-        path = NibblePath(encoded_key)
-        result_node = self._get(self._root, path)
-
-        return rlp.decode(result_node.data)
-
-    def delete(self, encoded_key):
-        """
-        Delete the value of the certain key.
-
-        Parameters
-        ----------
-        encoded_key : bytes
-            The key of the value to be deleted.
-
-        Returns
-        -------
-        None
-
-        """
-        super().delete(encoded_key, hash_key=False)
-
     # PROOF FUNCTIONS
-    def get_proof_of_inclusion(self, encoded_key):
+    def get_proof_of_inclusion(self, key):
         """
         Get the proof of inclusion of the certain key.
 
         Parameters
         ----------
-        encoded_key : bytes
+        key : bytes
             The key for wich the proof of inclusion is requested.
 
         Returns
@@ -241,8 +126,8 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             The proof of inclusion of the certain key.
 
         """
-        return Proof(target_key_hash=encoded_key, root_hash=self.root(),
-                     proof_hash=super().get_proof_of_inclusion(encoded_key, hash_key=False),
+        return Proof(target_key_hash=key, root_hash=self.root(),
+                     proof_hash=super().get_proof_of_inclusion(key),
                      type='POI')
 
     def verify_proof_of_inclusion(self, proof):
@@ -260,21 +145,18 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             True if the proof is valid, False otherwise.
 
         """
-        if proof.trie_root != self.root_hash():
-            raise KeyError("The supplied root is not meant for this trie.")
-        if proof.type != 'POI':
-            raise KeyError('The supplied proof is not a proof of inclusion.')
+        if not isinstance(proof, Proof):
+            raise TypeError("The proof must be a Proof object.")
 
-        return super().verify_proof_of_inclusion(proof.target, proof.proof, 
-                                                hash_key=False)
+        return super().verify_proof_of_inclusion(proof.target, proof.proof)
 
-    def get_proof_of_exclusion(self, encoded_key):
+    def get_proof_of_exclusion(self, key):
         """
         Get the proof of exclusion for a certain key.
 
         Parameters
         ----------
-        encoded_key : bytes
+        key : bytes
             The key for wich the proof of exclusion is requested.
 
         Returns
@@ -283,8 +165,8 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             The proof of exclusion for the certain key.
 
         """
-        return Proof(target_key_hash=encoded_key, root_hash=self.root_hash(),
-                     proof_hash=super().get_proof_of_exclusion(encoded_key, hash_key=False),
+        return Proof(target_key_hash=key, root_hash=self.root_hash(),
+                     proof_hash=super().get_proof_of_exclusion(key),
                      type='POE')
 
     def verify_proof_of_exclusion(self, proof):
@@ -302,11 +184,7 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             True if the proof is valid, False otherwise.
 
         """
-        if proof.trie_root != self.root_hash():
-            raise KeyError("The supplied root is not meant for this trie.")
-        if proof.type != 'POE':
-            raise KeyError('The supplied proof is not a proof of inclusion.')
-
-        return super().verify_proof_of_exclusion(proof.target, proof.proof, 
-                                                hash_key=False)
+        if not isinstance(proof, Proof):
+            raise TypeError("The proof must be a Proof object.")
+        return super().verify_proof_of_exclusion(proof.target, proof.proof)
 
