@@ -241,7 +241,7 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
             The proof of inclusion of the certain key.
 
         """
-        return Proof(target_key_hash=encoded_key, root_hash=self.root_hash(),
+        return Proof(target_key_hash=encoded_key, root_hash=self.root(),
                      proof_hash=super().get_proof_of_inclusion(encoded_key, hash_key=False),
                      type='POI')
 
