@@ -236,6 +236,38 @@ class TestMPT(unittest.TestCase):
         self.assertFalse(trie.contains(b'doe'))
         self.assertFalse(trie.contains(b'dogi'))
 
+        # Test some numbers
+        keys = [str(i).encode() for i in range(101, 201)]
+        for k in keys:
+            self.assertFalse(trie.contains(k))
+
+    def test_contains_secure(self):
+        """Test checking if a key is in the trie."""
+        storage = {}
+
+        trie = MerklePatriciaTrie(storage, secure=True)
+
+        trie.update(b'do', b'verb')
+        trie.update(b'dog', b'puppy')
+        trie.update(b'doge', b'coin')
+        trie.update(b'horse', b'stallion')
+
+        # Test exising keys
+        self.assertTrue(trie.contains(b'do'))
+        self.assertTrue(trie.contains(b'dog'))
+        self.assertTrue(trie.contains(b'doge'))
+        self.assertTrue(trie.contains(b'horse'))
+
+        # Test non-existing keys
+        self.assertFalse(trie.contains(b'horse2'))
+        self.assertFalse(trie.contains(b'doe'))
+        self.assertFalse(trie.contains(b'dogi'))
+
+        # Test some numbers
+        keys = [str(i).encode() for i in range(101, 201)]
+        for k in keys:
+            self.assertFalse(trie.contains(k))
+
     def test_contains_empty(self):
         """Test checking if a key is in the trie."""
         storage = {}
@@ -385,8 +417,7 @@ class Test_proof_of_inclusion(unittest.TestCase):
         for i in range(len(proof)):
             proof[i] = proof[i][:-1]
 
-        with self.assertRaises(DecodingError):
-            _ = trie.verify_proof_of_inclusion(data[2][0], proof[:-1])
+        self.assertFalse(trie.verify_proof_of_inclusion(data[2][0], proof[:-1]))
 
     # Test if the proof is valid when one char is added
     def test_verify_one_char_added(self):
@@ -404,8 +435,7 @@ class Test_proof_of_inclusion(unittest.TestCase):
         for i in range(len(proof)):
             proof[i] += b'o'
 
-        with self.assertRaises(DecodingError):
-            _ = trie.verify_proof_of_inclusion(data[2][0], proof)
+        self.assertFalse(trie.verify_proof_of_inclusion(data[2][0], proof))
 
 
 class Test_proof_of_exclusion(unittest.TestCase):
@@ -555,8 +585,8 @@ class Test_proof_of_exclusion(unittest.TestCase):
         proof = trie.get_proof_of_exclusion(b'wolf')
         for i in range(len(proof)):
             proof[i] = proof[i][:-1]
-        with self.assertRaises(DecodingError):
-            _ = trie.verify_proof_of_exclusion(b'wolf', proof)
+
+        self.assertFalse(trie.verify_proof_of_exclusion(b'wolf', proof))
 
     # Test if the proof is valid when one char is added
     def test_verify_one_char_added(self):
@@ -574,5 +604,4 @@ class Test_proof_of_exclusion(unittest.TestCase):
         for i in range(len(proof)):
             proof[i] += b'o'
 
-        with self.assertRaises(DecodingError):
-            _ = trie.verify_proof_of_exclusion(b'wolf', proof)
+        self.assertFalse(trie.verify_proof_of_exclusion(b'wolf', proof))
