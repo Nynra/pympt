@@ -64,16 +64,17 @@ class Test_proof_of_inclusion(unittest.TestCase):
         storage = {}
         trie = ModifiedMerklePatriciaTrie(storage)
 
-        trie.put(b'dog')
+        trie.update(b'dog', b'puppy')
         proof = trie.get_proof_of_inclusion(b'dog')
         
         with open(self.files['one_proof'], 'rb') as f:
             expected = pickle.load(f)
 
-        for i in range(len(proof)):
-            for j in range(len(proof[i])):
-                self.assertEqual(proof[i][j], expected[i][j], 'Proof does not match expected.')
-
+        # Compare all the attributes of the proof
+        self.assertEqual(proof.trie_root, expected.trie_root, 'Root hash does not match expected.')
+        self.assertEqual(proof.target, expected.target, 'Target does not match expected.')
+        self.assertEqual(proof.proof, expected.proof, 'Proof does not match expected.')
+        
     def test_proof_many(self):
         """Test getting the proof of many key-value pairs with trie in non secure."""
         storage = {}
@@ -81,16 +82,18 @@ class Test_proof_of_inclusion(unittest.TestCase):
 
         data = [b'do', b'dog', b'doge', b'horse']
         for kv in data:
-            trie.put(kv)
+            trie.update(kv, kv)
 
         # Generate a proof for each key
-        proofs = [trie.get_proof_of_inclusion(keccak_hash(rlp.encode(kv))).proof for kv in data]
+        proofs = [trie.get_proof_of_inclusion(kv) for kv in data]
         with open(self.files['many_proofs'], 'rb') as f:
             expected = pickle.load(f)
 
         for i in range(len(proofs)):
-            for j in range(len(proofs[i])):
-                self.assertEqual(proofs[i][j], expected[i][j], 'Proof does not match expected.')
+            # Compare all the attributes of the proof
+            self.assertEqual(proofs[i].trie_root, expected[i].trie_root, 'Root hash does not match expected.')
+            self.assertEqual(proofs[i].target, expected[i].target, 'Target does not match expected.')
+            self.assertEqual(proofs[i].proof, expected[i].proof, 'Proof does not match expected.')
 
     def test_proof_lots(self):
         """Test getting the proof of many key-value pairs with trie in secure."""
@@ -99,17 +102,19 @@ class Test_proof_of_inclusion(unittest.TestCase):
 
         data = [str(i).encode() for i in range(100)]
         for kv in data:
-            trie.put(kv)
+            trie.update(kv, kv)
 
-        proofs = [trie.get_proof_of_inclusion(keccak_hash(rlp.encode(kv))).proof for kv in data]
+        proofs = [trie.get_proof_of_inclusion(kv) for kv in data]
 
         with open(self.files['lots_of_proofs'], 'rb') as f:
             expected = pickle.load(f)
 
         for i in range(len(proofs)):
-            for j in range(len(proofs[i])):
-                self.assertEqual(proofs[i][j], expected[i][j], 'Proof does not match expected.')
-    
+            # Compare all the attributes of the proof
+            self.assertEqual(proofs[i].trie_root, expected[i].trie_root, 'Root hash does not match expected.')
+            self.assertEqual(proofs[i].target, expected[i].target, 'Target does not match expected.')
+            self.assertEqual(proofs[i].proof, expected[i].proof, 'Proof does not match expected.')
+
     def test_valid(self):
         """Test if the validation function wokrs."""
         storage = {}
@@ -201,9 +206,9 @@ class Test_proof_of_inclusion(unittest.TestCase):
 
 class Test_proof_of_exclusion(unittest.TestCase):
     """Test the proof functions of the MMPT."""
-    files = {'one_proof': 'tests/test_proofs/mmpt_one_proof.pkl',
-             'many_proofs': 'tests/test_proofs/mmpt_many_proofs.pkl',
-             'lots_of_proofs': 'tests/test_proofs/mmpt_lots_of_proofs.pkl'}     
+    files = {'one_proof': 'tests/test_proofs/mmpt_one_poe.pkl',
+             'many_proofs': 'tests/test_proofs/mmpt_many_poe.pkl',
+             'lots_of_proofs': 'tests/test_proofs/mmpt_lots_of_poe.pkl'}     
 
     def test_proof_on_empty_trie(self):
         """Test getting the proof of an empty trie."""
@@ -246,9 +251,10 @@ class Test_proof_of_exclusion(unittest.TestCase):
         with open(self.files['one_proof'], 'rb') as f:
             expected = pickle.load(f)
 
-        for i in range(len(proof)):
-            for j in range(len(proof[i])):
-                self.assertEqual(proof[i][j], expected[i][j], 'Proof does not match expected.')
+        # Compare all the attributes of the proof
+        self.assertEqual(proof.trie_root, expected.trie_root, 'Root hash does not match expected.')
+        self.assertEqual(proof.target, expected.target, 'Target does not match expected.')
+        self.assertEqual(proof.proof, expected.proof, 'Proof does not match expected.')
 
     def test_proof_many(self):
         """Test getting the proof of many key-value pairs with trie in non secure."""
@@ -260,16 +266,18 @@ class Test_proof_of_exclusion(unittest.TestCase):
             trie.update(kv, kv)
 
         # Generate some non existing keys
-        keys = [i for i in range(4)]
+        keys = [str(i).encode() for i in range(4)]
 
         # Load the expected proofs
-        proofs = [trie.get_proof_of_exclusion(kv).proof for kv in keys]
+        proofs = [trie.get_proof_of_exclusion(kv) for kv in keys]
         with open(self.files['many_proofs'], 'rb') as f:
             expected = pickle.load(f)
 
         for i in range(len(proofs)):
-            for j in range(len(proofs[i])):
-                self.assertEqual(proofs[i][j], expected[i][j], 'Proof does not match expected.')
+            # Compare all the attributes of the proof
+            self.assertEqual(proofs[i].trie_root, expected[i].trie_root, 'Root hash does not match expected.')
+            self.assertEqual(proofs[i].target, expected[i].target, 'Target does not match expected.')
+            self.assertEqual(proofs[i].proof, expected[i].proof, 'Proof does not match expected.')
 
     def test_proof_lots(self):
         """Test getting the proof of many key-value pairs with trie in secure."""
@@ -278,22 +286,24 @@ class Test_proof_of_exclusion(unittest.TestCase):
 
         data = [str(i).encode() for i in range(100)]
         for d in data:
-            trie.put(d)
+            trie.update(d, d)
 
         # Generate the proof for eacht item
-        keys = [d for d in range(101, 201)]
+        keys = [str(d).encode() for d in range(101, 201)]
 
         proofs = []
         for d in keys:
-            proofs.append(trie.get_proof_of_exclusion(d).proof)
+            proofs.append(trie.get_proof_of_exclusion(d))
 
         with open(self.files['lots_of_proofs'], 'rb') as f:
             expected = pickle.load(f)
 
         for i in range(len(proofs)):
-            for j in range(len(proofs[i])):
-                self.assertEqual(proofs[i][j], expected[i][j], 'Proof does not match expected.')
-            
+            # Compare all the attributes of the proof
+            self.assertEqual(proofs[i].trie_root, expected[i].trie_root, 'Root hash does not match expected.')
+            self.assertEqual(proofs[i].target, expected[i].target, 'Target does not match expected.')
+            self.assertEqual(proofs[i].proof, expected[i].proof, 'Proof does not match expected.')
+
     def test_valid(self):
         """Test if the validation function wokrs."""
         storage = {}

@@ -13,23 +13,19 @@ storage = {}
 trie = ModifiedMerklePatriciaTrie(storage)
 
 # Insert some data
-trie.put(b'do')
-trie.put(b'dog')
-trie.put(b'doge')
-trie.put(b'horse')
-trie.put(b'dogecoin')
-trie.put(b'dogecoiN')
-trie.put(b'dogfcoin')
-trie.put(b'dogfcoin')
-trie.put(b'dogecoiiin')
+trie.update(b'do', b'g')
+trie.update(b'dog', b'cat')
+trie.update(b'doge', b'mice')
+trie.update(b'horse', b'bird')
+trie.update(b'dogecoin', b'eliphant')
+trie.update(b'bitcoin', b'panda')
+trie.update(b'ethereum', b'penguin')
 
-# Get the proof of inclusion for the key
-key = b'dog'
-proof = trie.get_proof_of_inclusion(trie.get_key(key))
+proof = trie.get_proof_of_inclusion(b'dog')
 
 print('Proof dict:')
 for i, j in proof.items():
     print(i, ':', j)
 
-print('\nProof valid: {}'.format(trie.verify_proof_of_inclusion(trie.root(), proof)))
+print('\nProof valid: {}'.format(trie.verify_proof_of_inclusion(proof)))
 

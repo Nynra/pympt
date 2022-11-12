@@ -187,4 +187,3 @@ class ModifiedMerklePatriciaTrie(MerklePatriciaTrie):
         if not isinstance(proof, Proof):
             raise TypeError("The proof must be a Proof object.")
         return super().verify_proof_of_exclusion(proof.target, proof.proof)
-
