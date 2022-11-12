@@ -336,22 +336,22 @@ class Test_proof_of_inclusion(unittest.TestCase):
     def test_proof_lots(self):
         """Test getting the proof of many key-value pairs with trie in secure."""
         storage = {}
+        trie = MerklePatriciaTrie(storage, secure=True)
         numbers = [i for i in range(100)]
-        data = list(map(lambda x: bytes('{}'.format(x), 'utf-8'), numbers))
-        trie = MerklePatriciaTrie(storage)
+        data = [[str(i).encode(), str(i * 2).encode()] for i in numbers]
 
-        # Put the keys in the trie
         for kv in data:
-            trie.update(kv, kv * 2)
+            trie.update(kv[0], kv[1])
 
-        proofs = [trie.get_proof_of_inclusion(kv) for kv in data]
+        proofs = [trie.get_proof_of_inclusion(kv[0]) for kv in data]
 
         # Load the proof file
         with open(self.files['lots_of_proofs'], 'rb') as f:
             expected = pickle.load(f)
 
         for i in range(len(proofs)):
-            self.assertEqual(proofs[i], expected[i], 'Proof does not match expected for {}, expected {}, got {}.'.format(data[i], expected[i], proofs[i]))
+            for j in range(len(expected[i])):
+                self.assertEqual(proofs[i][j], expected[i][j], 'Proof does not match expected')
     
     def test_valid(self):
         """Test if the validation function will validate the self generated hash."""

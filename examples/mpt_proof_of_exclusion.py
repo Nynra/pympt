@@ -9,28 +9,30 @@ except (ImportError, ModuleNotFoundError):
     from src.mpt.mpt import MerklePatriciaTrie
     from src.mpt.node import Node
 import pickle
-import rlp
 
 # Create the storage
 storage = {}
-trie = MerklePatriciaTrie(storage, secure=False)
+trie = MerklePatriciaTrie(storage, secure=True)
 
-#data = [[b'do', b'verb'], [b'dog', b'puppy'], [b'doge', b'coin'], [b'horse', b'stallion']]
-#for kv in data:
-#    trie.update(kv[0], kv[1])
+data = [[b'do', b'verb'], [b'dog', b'puppy'], [b'doge', b'coin'], [b'horse', b'stallion']]
+for kv in data:
+    trie.update(kv[0], kv[1])
 
-#proofs = []
-#for kv in data:
-#    proofs.append(trie.get_proof_of_exclusion(kv[0]))
+keys = [[str(i).encode(), str(i + 1).encode()] for i in range(len(data))]
+# Load the proofs from the file
+proofs = [trie.get_proof_of_exclusion(k) for k, v in keys]
 
-#with open('tests/test_proofs/mpt_many_proof_of_exclusion.pkl', 'wb') as f:
-#    pickle.dump(proofs, f)
+for i, key in enumerate(keys):
+    if not trie.verify_proof_of_exclusion(key, proofs[i]):
+        raise Exception('Proof of exclusion is invalid')
+with open('mpt_many_poe.pkl', 'wb') as f:
+    pickle.dump(proofs, f)
     
 # Insert some data
-trie.update(b'do', b'verb')
-trie.update(b'dog', b'puppy')
-trie.update(b'doge', b'coin')
-trie.update(b'horse', b'stallion')
+#trie.update(b'do', b'verb')
+#trie.update(b'dog', b'puppy')
+#trie.update(b'doge', b'coin')
+#trie.update(b'horse', b'stallion')
 
 #print(trie.contains(b'wo'))
 

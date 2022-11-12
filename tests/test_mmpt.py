@@ -328,8 +328,7 @@ class Test_proof_of_exclusion(unittest.TestCase):
         proofs = [trie.get_proof_of_exclusion(keccak_hash(rlp.encode(k))) for k in keys]
         trie.delete(b'do')
         for proof in proofs:
-            with self.assertRaises(KeyError):
-                trie.verify_proof_of_exclusion(proof) 
+            self.assertFalse(trie.verify_proof_of_exclusion(proof)) 
 
 
     # Test if the proof is valid when one point is added
@@ -348,8 +347,7 @@ class Test_proof_of_exclusion(unittest.TestCase):
         proofs = [trie.get_proof_of_exclusion(k) for k in keys]
         trie.update(b'bear', b'bear')
         for proof in proofs:
-            with self.assertRaises(KeyError):
-                trie.verify_proof_of_exclusion(proof) 
+            self.assertFalse(trie.verify_proof_of_exclusion(proof)) 
 
     # Test if the proof is valid when one char is removed
     def test_verify_one_char_removed(self):
@@ -563,3 +561,6 @@ class Test_save_and_load(unittest.TestCase):
         # Verify proof on the copy
         self.assertTrue(new_trie.verify_proof_of_inclusion(proof))
 
+
+if __name__ == '__main__':
+    unittest.main()
