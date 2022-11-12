@@ -150,7 +150,7 @@ class MerklePatriciaTrie:
     # Find out if the key is in the trie
     def contains(self, key, hash_key=True):
         if not self._root:
-            raise ValueError("Trie is empty")
+            return False
 
         if self._secure and hash_key:
             key = keccak_hash(key)
@@ -751,7 +751,7 @@ class MerklePatriciaTrie:
         """
         node = self._get_node(node_ref)
 
-        print(type(node))
+        # print(type(node))
 
         # If path is empty, our travel is over. Main `get` method 
         # will check if this node has a value.

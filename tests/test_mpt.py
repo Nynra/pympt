@@ -274,17 +274,10 @@ class TestMPT(unittest.TestCase):
 
         trie = MerklePatriciaTrie(storage)
 
-        with self.assertRaises(ValueError):
-            _ = trie.contains(b'do')
-
-        with self.assertRaises(ValueError):
-            _ = trie.contains(b'dog')
-
-        with self.assertRaises(ValueError):
-            _ = trie.contains(b'doge')
-
-        with self.assertRaises(ValueError):
-            _ = trie.contains(b'horse')
+        self.assertFalse(trie.contains(b'do'))
+        self.assertFalse(trie.contains(b'dog'))
+        self.assertFalse(trie.contains(b'doge'))
+        self.assertFalse(trie.contains(b'horse'))
 
 
 class Test_proof_of_inclusion(unittest.TestCase):

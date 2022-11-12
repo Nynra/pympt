@@ -3,6 +3,7 @@ try:
     from mpt.mmpt import ModifiedMerklePatriciaTrie
     from mpt.node import Node
     from mpt.hash import keccak_hash
+    from mpt.proof import Proof
 except (ImportError, ModuleNotFoundError):
     #Following lines are for assigning parent directory dynamically.
     dir_path = os.path.dirname(os.path.realpath(__file__))
