@@ -549,6 +549,23 @@ class Test_save_and_load(unittest.TestCase):
         self.assertFalse(trie.verify_proof_of_inclusion(proof))
         self.assertTrue(new_trie.verify_proof_of_inclusion(proof))
 
+    def test_identical_pickle(self):
+        """Test if when two trees are identical, the pickles are identical."""
+        trie1 = ModifiedMerklePatriciaTrie({})
+        trie2 = ModifiedMerklePatriciaTrie({})
+
+        # Add some data
+        data = [b'do', b'dog', b'doge', b'horse']
+        for kv in data:
+            trie1.update(kv, kv)
+            trie2.update(kv, kv)
+
+        # Save the trie
+        pickle_bytes1 = trie1.to_pickle()
+        pickle_bytes2 = trie2.to_pickle()
+
+        self.assertEqual(pickle_bytes1, pickle_bytes2, 'Pickles are not identical.')
+
 
 if __name__ == '__main__':
     unittest.main()
