@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mpt"
+name = "pympt"
 version = "0.0.2b"
 description = "A module for Modified Mercle-Patrisa Tries."
 authors = [{name = "Nynra", email="nynradev@pm.me"}]
