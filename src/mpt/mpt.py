@@ -1,23 +1,40 @@
 from enum import Enum
 from .hash import keccak_hash, keccak_hash_list
 from .nibble_path import NibblePath
-from .node import Node, Leaf, Extension, Branch, _prepare_reference_for_encoding, _prepare_reference_for_usage
-from .errors import KeyNotFoundError, ExtensionPathError, LeafPathError, BranchPathError, PoeError, PoiError, InvalidNodeError
+from .node import (
+    Node,
+    Leaf,
+    Extension,
+    Branch,
+    _prepare_reference_for_encoding,
+    _prepare_reference_for_usage,
+)
+from .exceptions import (
+    KeyNotFoundError,
+    ExtensionPathError,
+    LeafPathError,
+    BranchPathError,
+    PoeError,
+    PoiError,
+    InvalidNodeError,
+)
+from typing import Dict, Tuple, List, Union, Optional
+from typeguard import typechecked
 
 
 class MerklePatriciaTrie:
     """
     This class represents a trie.
 
-    MerklePatriciaTrie works like a wrapper over provided storage. 
-    Storage must implement dict-like interface. Any data structure 
+    MerklePatriciaTrie works like a wrapper over provided storage.
+    Storage must implement dict-like interface. Any data structure
     that implements `__getitem__` and `__setitem__` should be OK.
 
     IMPORTANT: MPT's use the terms path, node_ref, node value a lot
     and it can cause some confusion.
     -   path is a sequence of nibbles. The path is used for database lookup
         and consists of the steps down the tree that are needed to reach the value.
-    -   node_ref is a reference to a node in the storage. The node ref is a 
+    -   node_ref is a reference to a node in the storage. The node ref is a
         hash of the node itself.
     -   node is the object that represents a node in the trie. It can be a leaf,
         an extension or a branch. How many values are stored in a node depends on
@@ -33,7 +50,7 @@ class MerklePatriciaTrie:
         This method removes a value associtated with provided key.
     """
 
-    def __init__(self, storage, root=None, secure=False):
+    def __init__(self, storage: dict, root: bytes = ..., secure: bool = False) -> ...:
         """
         Create a new instance of MPT.
 
@@ -42,40 +59,46 @@ class MerklePatriciaTrie:
         storage: dict-like
             Data structure to store all the data of MPT.
         root: bytes
-            (Optional) Root node (not root hash!) of the trie. 
+            (Optional) Root node (not root hash!) of the trie.
             If not provided, tree will be considered empty.
         secure: bool
             (Optional) In secure mode all the keys are hashed using keccak256 internally.
         """
         self._storage = storage
-        self._root = root
+        if root == ...:
+            self._root = None
+        else:
+            self._root = root
         self._secure = secure
 
-    def root(self):
+    # SPECIAL METHODS
+    def __len__(self) -> int:
+        """Return the number of nodes in the trie."""
+        return len(self._storage.keys())
+
+    # TREE FUNCTIONS
+    def root(self) -> Union[bytes, None]:
         """
-        Return a root node of the trie. 
-        
+        Return a root node of the trie.
+
         Returns
         -------
         Node
-            Root node of the trie. Type is `bytes` if trie isn't empty and `None` otherwise. 
-
+            Root node of the trie. Type is `bytes` if trie isn't empty and `None` otherwise.
         """
         return self._root
 
-    def root_hash(self):
+    def root_hash(self) -> bytes:
         """
-        Returns a hash of the trie's root node. 
-        
-        For empty trie it's the hash of the RLP-encoded empty string. 
+        Returns a hash of the trie's root node.
+
+        For empty trie it's the hash of the RLP-encoded empty string.
 
         Returns
         -------
         bytes
-            Hash of the trie's root node. 
-
+            Hash of the trie's root node.
         """
-
         if not self._root:
             return Node.EMPTY_HASH
         elif len(self._root) == 32:  # Root is already a hash
@@ -83,17 +106,17 @@ class MerklePatriciaTrie:
         else:
             return keccak_hash(self._root)
 
-    def get(self, encoded_key):
+    def get(self, encoded_key: bytes) -> bytes:
         """
         This method gets a value associtated with provided key.
 
-        Note: this method does not RLP-encode the key. 
+        This method does not RLP-encode or hash the key.
         If you use encoded keys, you should encode it yourself.
 
         Parameters
         ----------
         encoded_key: bytes
-            RLP-encoded key.
+            Key or RLP-encoded key.
 
         Returns
         -------
@@ -112,61 +135,53 @@ class MerklePatriciaTrie:
             encoded_key = keccak_hash(encoded_key)
 
         path = NibblePath(encoded_key)
-
         result_node = self._get(self._root, path)
-
         return result_node.data
 
-    def update(self, encoded_key, encoded_value):
+    def update(self, encoded_key: bytes, encoded_value: bytes) -> ...:
         """
         This method updates a provided key-value pair into the trie.
 
         If there is no such a key in the trie, a new entry will be created.
         Otherwise value associtaed with key is updated.
-        Note: this method does not RLP-encode neither key or value. 
-        If you use encoded keys, you should encode it yourself.
+
+        This method does not RLP-encode the key and value.
+        If you use encoded keys and values, you should encode them yourself.
 
         Parameters
         ----------
         encoded_key: bytes
-            RLP-encoded key.
+            Key or RLP-encoded key.
         encoded_value: bytes
-            RLP-encoded value.
-
-        Returns
-        -------
-        None
-
+            Value or RLP-encoded value.
         """
         if self._secure:
             encoded_key = keccak_hash(encoded_key)
 
         path = NibblePath(encoded_key)
-
         result = self._update(self._root, path, encoded_value)
-
         self._root = result
 
     # Find out if the key is in the trie
-    def contains(self, key, hash_key=True):
+    def contains(self, key: bytes, hash_key: bool = True) -> bool:
+        """
+        This method checks if the key is in the trie.
+
+        This method does not RLP-encode the key.
+        If you use encoded keys, you should encode them yourself.
+        """
         if not self._root:
             return False
 
         if self._secure and hash_key:
             key = keccak_hash(key)
-    
+
         path = NibblePath(key)
         node = self._contains(self._root, path)
 
-        #print(type(node))
-        #if not isinstance(node, Extension):
-        #    print(node.data)
-        #else:
-        #    print('node is an extension')
-
         # If the node is a branch check if it has a value
         if isinstance(node, Branch):
-            if node.data != None and node.data != b'':
+            if node.data != None and node.data != b"":
                 return True
             else:
                 return False
@@ -175,7 +190,7 @@ class MerklePatriciaTrie:
         # Extension nodes dont hold data
         if isinstance(node, Extension):
             return False
-        
+
         # If the node is a leaf the key is in the trie
         if isinstance(node, Leaf):
             if node.path == path:
@@ -188,26 +203,17 @@ class MerklePatriciaTrie:
 
         raise Exception("This should never happen")
 
-
-    def __len__(self):
-        """Return the number of nodes in the trie."""
-        return len(self._storage.keys())
-
-    def delete(self, encoded_key):
+    def delete(self, encoded_key: bytes) -> ...:
         """
         This method removes a value associtated with provided key.
 
-        Note: this method does not RLP-encode the key. 
+        This method does not RLP-encode the key.
         If you use encoded keys, you should encode it yourself.
 
         Parameters
         ----------
         encoded_key: bytes
-            RLP-encoded key.
-
-        Returns
-        -------
-        None
+            The key or RLP-encoded key.
 
         Raises
         ------
@@ -222,7 +228,6 @@ class MerklePatriciaTrie:
             encoded_key = keccak_hash(encoded_key)
 
         path = NibblePath(encoded_key)
-
         action, info = self._delete(self._root, path)
 
         if action == MerklePatriciaTrie._DeleteAction.DELETED:
@@ -235,62 +240,66 @@ class MerklePatriciaTrie:
             _, new_root = info
             self._root = new_root
 
-    def get_proof_of_inclusion(self, encoded_key):
+    def get_proof_of_inclusion(self, encoded_key: bytes) -> bytes:
         """
         This method returns a proof of inclusion for a key.
 
         Proof is a list of nodes that are necessary to reconstruct the trie.
 
-        Note: this method does not RLP-encode the key. 
-        If you use encoded keys, you should encode it yourself.
+        .. attention::
+            This method does not RLP-encode the key.
+            If you use encoded keys, you should encode it yourself.
 
         Parameters
         ----------
         encoded_key: bytes
-            RLP-encoded key.
-        hash_key: bool
-            (Optional) If true, key is hashed using keccak256.
-            If false, key is not hashed. Default is true. Only
-            use false if you are sure that key is already hashed.
+            Key or RLP-encoded key.
 
         Returns
         -------
         proof_hash: bytes
             Hash of the proof.
 
+        Raises
+        ------
+        ValueError
+            ValueError is raised if the trie is empty.
         """
         if self._root is None:
-            raise ValueError('Cannot generate a proof for empty trie')
-        
+            raise ValueError("Cannot generate a proof for empty trie")
+
         if self._secure:
             encoded_key = keccak_hash(encoded_key)
 
         return self._get_proof_of_inclusion(self._root, NibblePath(encoded_key), [])
 
-    def verify_proof_of_inclusion(self, encoded_key, proof):
+    def verify_proof_of_inclusion(self, encoded_key: bytes, proof: List[bytes]) -> bool:
         """
         This method verifies a proof of inclusion for a key.
 
-        Note: this method does not RLP-encode the key. 
-        If you use encoded keys, you should encode it yourself.
+        .. Attention::
+            This method does not RLP-encode the key.
+            If you use encoded keys, you should encode it yourself.
 
         Parameters
         ----------
         encoded_key: bytes
-            RLP-encoded key.
+            Key or RLP-encoded key.
         proof: list of bytes
             Proof of inclusion hash for a key.
-        hash_key: bool
-            (Optional) If true, the key is hashed using keccak256.
 
         Returns
         -------
         bool
             True if the proof is valid, False otherwise.
 
+        Raises
+        ------
+        ValueError
+            ValueError is raised if the trie is empty.
         """
         if self._root is None:
-            raise ValueError('Cannot verify a proof for empty trie')
+            raise ValueError("Cannot verify a proof for empty trie")
 
         # Compare the root hashes
         if self.root_hash() != keccak_hash(proof[0]):
@@ -305,39 +314,45 @@ class MerklePatriciaTrie:
         for encoded_node in proof:
             proof_storage[Node.into_reference(Node.decode(encoded_node))] = encoded_node
 
-        return self._verify_proof_of_inclusion(self._root, NibblePath(encoded_key), proof_storage)
+        return self._verify_proof_of_inclusion(
+            self._root, NibblePath(encoded_key), proof_storage
+        )
 
-    def get_proof_of_exclusion(self, encoded_key):
+    def get_proof_of_exclusion(self, encoded_key: bytes) -> List[bytes]:
         """
         This method returns a proof of exclusion for a key.
 
         Proof is a list of nodes that are necessary to reconstruct the trie.
 
-        Note: this method does not RLP-encode the key. 
-        If you use encoded keys, you should encode it yourself.
+        .. attention::
+            This method does not RLP-encode the key.
+            If you use encoded keys, you should encode it yourself.
 
         Parameters
         ----------
         encoded_key: bytes
-            RLP-encoded key.
-        hash_key: bool
-            (Optional) If true, key is hashed using keccak256.
-            If false, key is not hashed. Default is true. Only
-            use false if you are sure that key is already hashed.
+            Key or RLP-encoded key.
 
         Returns
         -------
         proof_hash: bytes
             Hash of the proof.
 
+        Raises
+        ------
+        ValueError
+            ValueError is raised if the trie is empty.
+        PoeError
+            PoeError is raised if the key is in the trie.
+
         """
         if self._root is None:
-            raise ValueError('Cannot generate a proof for empty trie')
+            raise ValueError("Cannot generate a proof for empty trie")
 
         # Check if the key is in the trie
         if self.contains(encoded_key):
-            raise PoeError('Cannot generate a proof for a key that is in the trie')
-        
+            raise PoeError("Cannot generate a proof for a key that is in the trie")
+
         if self._secure:
             encoded_key = keccak_hash(encoded_key)
 
@@ -345,12 +360,12 @@ class MerklePatriciaTrie:
         node, proof = self._get_proof_of_exclusion(self._root, path, [])
 
         # Add a leaf node with the key to the proof
-        proof.append(Leaf(path, 'null').encode())
+        proof.append(Leaf(path, "null").encode())
 
         # If the node is a branch check if i thas a value
         # Can be None or b'' (b'' is used when trie is in secure mode)
         if isinstance(node, Branch):
-            if node.data != None and node.data != b'':
+            if node.data != None and node.data != b"":
                 raise PoeError("This should never happen")
             else:
                 return proof
@@ -359,7 +374,7 @@ class MerklePatriciaTrie:
         # Extension nodes dont hold data
         if isinstance(node, Extension):
             return proof
-        
+
         # If the node is a leaf the key is in the trie
         if isinstance(node, Leaf):
             if node.path == path:
@@ -372,36 +387,39 @@ class MerklePatriciaTrie:
 
         raise Exception("This should never happen")
 
-    def verify_proof_of_exclusion(self, encoded_key, proof):
+    def verify_proof_of_exclusion(self, encoded_key: bytes, proof: List[bytes]) -> bool:
         """
         This method verifies a proof of exclusion for a key.
 
-        Note: this method does not RLP-encode the key. 
-        If you use encoded keys, you should encode it yourself.
+        .. attention::
+            This method does not RLP-encode the key.
+            If you use encoded keys, you should encode it yourself.
 
         Parameters
         ----------
         encoded_key: bytes
-            RLP-encoded key.
+            Key or RLP-encoded key.
         proof: list of bytes
             Proof of exclusion hash for a key.
-        hash_key: bool
-            (Optional) If true, the key is hashed using keccak256.
 
         Returns
         -------
         bool
             True if the proof is valid, False otherwise.
 
+        Raises
+        ------
+        ValueError
+            ValueError is raised if the trie is empty.
         """
         if self._root is None:
-            raise ValueError('Cannot verify a proof for empty trie')
+            raise ValueError("Cannot verify a proof for empty trie")
 
         # Compare the root hashes
         if self.root_hash() != keccak_hash(proof[0]):
             return False
 
-        if Node.decode(proof[-1]).data != b'null':
+        if Node.decode(proof[-1]).data != b"null":
             return False
 
         if self._secure:
@@ -415,14 +433,16 @@ class MerklePatriciaTrie:
             proof_storage[Node.into_reference(Node.decode(encoded_node))] = encoded_node
 
         path = NibblePath(encoded_key)
-        node, keys_left = self._verify_proof_of_exclusion(self.root(), NibblePath(encoded_key), proof_storage)
-        
+        node, keys_left = self._verify_proof_of_exclusion(
+            self.root(), NibblePath(encoded_key), proof_storage
+        )
+
         # Check if the result node is valid
         # If the node is a branch check if it has a value
         if isinstance(node, Branch):
             if node.data == None:
                 return False
-        
+
         # If the node is a leaf the key is in the trie
         if isinstance(node, Leaf):
             if node.path == path:
@@ -431,33 +451,22 @@ class MerklePatriciaTrie:
         # There should be no keys left in the proof
         if len(keys_left.keys()) != 0:
             return False
-        
+
         # Proof passed
         return True
 
-    def _get_node(self, node_ref):
-        """
-        This method gets a node from storage.
-        
-        Parameters
-        ----------
-        node_ref: bytes
-            Reference to the node.
-        
-        Returns
-        -------
-        Node
-            Node from storage.
-
-        """
-       
+    def _get_node(self, node_ref: bytes) -> Node:
+        """This method gets a node from storage."""
         raw_node = None
 
         # Okey maybe it is alright like this because an RLP encoded node will
         # still get decoded
         # If the node_ref is already a node, just return it
-        if isinstance(node_ref, Extension) or isinstance(node_ref, Leaf) \
-                or isinstance(node_ref, Branch):
+        if (
+            isinstance(node_ref, Extension)
+            or isinstance(node_ref, Leaf)
+            or isinstance(node_ref, Branch)
+        ):
             return node_ref
 
         # Otherwise try to get it from storage or decode it from RLP
@@ -465,52 +474,58 @@ class MerklePatriciaTrie:
             raw_node = self._storage[node_ref]
         else:
             raw_node = node_ref
-        
+
         decoded_node = Node.decode(raw_node)
-        if not (isinstance(decoded_node, Extension) or isinstance(decoded_node, Leaf) \
-                or isinstance(decoded_node, Branch)):
-            raise InvalidNodeError('Invalid node type {}'.format(type(decoded_node)))
+        if not (
+            isinstance(decoded_node, Extension)
+            or isinstance(decoded_node, Leaf)
+            or isinstance(decoded_node, Branch)
+        ):
+            raise InvalidNodeError("Invalid node type {}".format(type(decoded_node)))
         return Node.decode(raw_node)
 
-    def _get(self, node_ref, path):
+    def _get(self, node_ref: bytes, path: NibblePath) -> bytes:
         """
         Get support method.
-        
+
         Returns a value associated with provided key.
-        
+
         Parameters
         ----------
         node_ref: bytes
             Reference to a node.
         path: NibblePath
             Path to a value.
-            
+
         Returns
         -------
         bytes
             Value associated with provided key.
-            
+
         Raises
         ------
-        KeyError
+        KeyNotFoundError
             KeyError is raised if there is no value assotiated with provided key.
-        
+        ExtensionPathError, BranchPathError, LeafPathError, InvalidNodeError, ExtentionPathError
+            Raised if the path is not valid.
         """
         node = self._get_node(node_ref)
 
-        # If path is empty, our travel is over. Main `get` method 
+        # If path is empty, our travel is over. Main `get` method
         # will check if this node has a value.
         if len(path) == 0:
             return node
 
         if type(node) is Leaf:
-            # If we've found a leaf, it's either the leaf we're 
+            # If we've found a leaf, it's either the leaf we're
             # looking for or wrong leaf.
             if node.path == path:
                 return node
             else:
-                raise KeyNotFoundError('The leaf key and search key do not match.'
-                               ' Leaf key: {}, search key: {}'.format(node.path, path))
+                raise KeyNotFoundError(
+                    "The leaf key and search key do not match."
+                    " Leaf key: {}, search key: {}".format(node.path, path)
+                )
 
         elif type(node) is Extension:
             # If we've found an extension, we need to go deeper.
@@ -518,8 +533,10 @@ class MerklePatriciaTrie:
                 rest_path = path.consume(len(node.path))
                 return self._get(node.next_ref, rest_path)
             else:
-                raise ExtensionPathError('Something wrong with the path in the extension.'
-                               ' Extension path: {}, search path: {}'.format(node.path, path))
+                raise ExtensionPathError(
+                    "Something wrong with the path in the extension."
+                    " Extension path: {}, search path: {}".format(node.path, path)
+                )
 
         elif type(node) is Branch:
             # If we've found a branch node, go to the appropriate branch.
@@ -527,28 +544,30 @@ class MerklePatriciaTrie:
             if len(branch) > 0:
                 return self._get(branch, path.consume(1))
             else:
-                raise BranchPathError('Branch slot is empty.'
-                               ' Branch: {}, search path: {}'.format(node.branches, path))
+                raise BranchPathError(
+                    "Branch slot is empty."
+                    " Branch: {}, search path: {}".format(node.branches, path)
+                )
 
-        raise InvalidNodeError('Invalid node type {}'.format(type(node)))
+        raise InvalidNodeError("Invalid node type {}".format(type(node)))
 
-    def _contains(self, node_ref, path):
+    def _contains(self, node_ref: bytes, path: NibblePath) -> bool:
         """
         contains support method.
-        
+
         Only returns the node as close to the end of the path as possible.
-        The main contains method will check if this node has a value, and 
+        The main contains method will check if this node has a value, and
         if this value is the one we're looking for.
         """
         node = self._get_node(node_ref)
 
-        # If path is empty, our travel is over. Main `get` method 
+        # If path is empty, our travel is over. Main `get` method
         # will check if this node has a value.
         if len(path) == 0:
             return node
 
         if type(node) is Leaf:
-            # If we've found a leaf, it's either the leaf we're 
+            # If we've found a leaf, it's either the leaf we're
             # looking for or wrong leaf.(we hope its the wrong leaf but
             # that is up to the main method).
             return node
@@ -570,14 +589,16 @@ class MerklePatriciaTrie:
                 # This is the furthest node we can go.
                 return node
 
-        raise InvalidNodeError('Invalid node type {}'.format(type(node)))
+        raise InvalidNodeError("Invalid node type {}".format(type(node)))
 
-    def _get_proof_of_inclusion(self, node_ref, path, proof):
+    def _get_proof_of_inclusion(
+        self, node_ref: bytes, path: NibblePath, proof: dict
+    ) -> dict:
         """
         Get proof of inclusion support method.
-        
+
         Used to iterate over the trie and get a proof of inclusion for a node ref.
-        
+
         Parameters
         ----------
         node_ref: bytes
@@ -586,17 +607,18 @@ class MerklePatriciaTrie:
             Path to a value.
         proof: dict
             Dictionary with nodes. (empty in the beginning)
-            
+
         Returns
         -------
-        bytes
-            Raw node associated with provided key.
-            
+        dict
+            Dictionary with nodes in the proof up untill now.
+
         Raises
         ------
         KeyError
             KeyError is raised if there is no node assotiated with provided key.
-        
+        LeafPathError, InvalidNodeError, ExtentionPathError, BranchPathError
+            Raised if the path is not valid.
         """
         # Get the node from the reference
         node = self._get_node(node_ref)
@@ -610,14 +632,16 @@ class MerklePatriciaTrie:
             return proof
 
         if isinstance(node, Leaf):
-            # If we've found a leaf, it's either the leaf we're 
+            # If we've found a leaf, it's either the leaf we're
             # looking for or wrong leaf.
             if node.path == path:
                 proof.append(node.encode())
                 return proof
             else:
-                raise LeafPathError('The leaf key and search key do not match'
-                               ' Leaf key: {}, search key: {}'.format(node.path, path))
+                raise LeafPathError(
+                    "The leaf key and search key do not match"
+                    " Leaf key: {}, search key: {}".format(node.path, path)
+                )
 
         elif type(node) is Extension:
             # If we've found an extension, we need to go deeper.
@@ -626,8 +650,10 @@ class MerklePatriciaTrie:
                 proof.append(node.encode())
                 return self._get_proof_of_inclusion(node.next_ref, rest_path, proof)
             else:
-                raise ExtensionPathError('Something wrong with the path in the extension'
-                               ' Extension path: {}, search path: {}'.format(node.path, path))
+                raise ExtensionPathError(
+                    "Something wrong with the path in the extension"
+                    " Extension path: {}, search path: {}".format(node.path, path)
+                )
 
         elif type(node) is Branch:
             # If we've found a branch node, go to the appropriate branch.
@@ -636,17 +662,21 @@ class MerklePatriciaTrie:
                 proof.append(node.encode())
                 return self._get_proof_of_inclusion(branch, path.consume(1), proof)
             else:
-                raise BranchPathError('Branch slot is empty.'
-                               ' Branch: {}, search path: {}'.format(node.branches, path))
+                raise BranchPathError(
+                    "Branch slot is empty."
+                    " Branch: {}, search path: {}".format(node.branches, path)
+                )
 
-        raise InvalidNodeError('Unknown node type {}'.format(node))
+        raise InvalidNodeError("Unknown node type {}".format(node))
 
-    def _verify_proof_of_inclusion(self, node_ref, path, proof_storage):
+    def _verify_proof_of_inclusion(
+        self, node_ref: bytes, path: NibblePath, proof_storage: dict
+    ) -> bool:
         """
         Verify proof of inclusion support method.
-        
+
         Used to verify a proof of inclusion for a node ref.
-        
+
         Parameters
         ----------
         node_ref: bytes
@@ -655,20 +685,25 @@ class MerklePatriciaTrie:
             Path to a value.
         proof: dict
             Dictionary with nodes. (empty in the beginning)
-            
+
         Returns
         -------
         bool
             True if the proof is valid, False otherwise.
-            
+
         Raises
         ------
         KeyError
             KeyError is raised if there is no node assotiated with provided key.
-        
+        ExtensionPathError, InvalidNodeError, LeafPathError, BranchPathError, InvalidNodeError
+            Raised if the path is not valid.
         """
         # Get the right node from the proof storage
-        if not (isinstance(node_ref, Leaf) or isinstance(node_ref, Extension) or isinstance(node_ref, Branch)):
+        if not (
+            isinstance(node_ref, Leaf)
+            or isinstance(node_ref, Extension)
+            or isinstance(node_ref, Branch)
+        ):
             # Otherwise try to get it from storage or decode it from RLP
             if len(node_ref) == 32:
                 try:
@@ -681,7 +716,7 @@ class MerklePatriciaTrie:
         else:
             node = node_ref
 
-        # If path is empty, our travel is over. Main `get` method 
+        # If path is empty, our travel is over. Main `get` method
         # will check if this node has a value.
         if len(path) == 0:
             # check extension and node, leaf already handeled
@@ -696,7 +731,7 @@ class MerklePatriciaTrie:
             return True
 
         if type(node) is Leaf:
-            # If we've found a leaf, it's either the leaf we're 
+            # If we've found a leaf, it's either the leaf we're
             # looking for or wrong leaf.
             if node.path == path:
                 return True
@@ -707,28 +742,38 @@ class MerklePatriciaTrie:
             # If we've found an extension, we need to go deeper.
             if path.starts_with(node.path):
                 rest_path = path.consume(len(node.path))
-                return self._verify_proof_of_inclusion(node.next_ref, rest_path, proof_storage)
+                return self._verify_proof_of_inclusion(
+                    node.next_ref, rest_path, proof_storage
+                )
             else:
-                raise ExtensionPathError('Something wrong with the path in the extension.'
-                               ' Extension path: {}, search path: {}'.format(node.path, path))
+                raise ExtensionPathError(
+                    "Something wrong with the path in the extension."
+                    " Extension path: {}, search path: {}".format(node.path, path)
+                )
 
         elif type(node) is Branch:
             # If we've found a branch node, go to the appropriate branch.
             branch = node.branches[path.at(0)]
             if len(branch) > 0:
-                return self._verify_proof_of_inclusion(branch, path.consume(1), proof_storage)
+                return self._verify_proof_of_inclusion(
+                    branch, path.consume(1), proof_storage
+                )
             else:
-                raise BranchPathError('Branch slot is empty.'
-                               ' Branch: {}, search path: {}'.format(node.branches, path))
+                raise BranchPathError(
+                    "Branch slot is empty."
+                    " Branch: {}, search path: {}".format(node.branches, path)
+                )
 
-        raise InvalidNodeError('Unknown node type {}'.format(node))
+        raise InvalidNodeError("Unknown node type {}".format(node))
 
-    def _get_proof_of_exclusion(self, node_ref, path, proof):
+    def _get_proof_of_exclusion(
+        self, node_ref: bytes, path: NibblePath, proof: dict
+    ) -> dict:
         """
         Get proof of exclusion support method.
-        
+
         Used to iterate over the trie and get a proof of exclusion for a node ref.
-        
+
         Parameters
         ----------
         node_ref: bytes
@@ -737,30 +782,29 @@ class MerklePatriciaTrie:
             Path to a value.
         proof: dict
             Dictionary with nodes. (empty in the beginning)
-            
+
         Returns
         -------
-        bytes
-            Raw node associated with provided key.
-            
+        dict
+            Dictionary with nodes. (empty in the beginning)
+
         Raises
         ------
         KeyError
             KeyError is raised if there is no node assotiated with provided key.
-        
         """
         node = self._get_node(node_ref)
 
         # print(type(node))
 
-        # If path is empty, our travel is over. Main `get` method 
+        # If path is empty, our travel is over. Main `get` method
         # will check if this node has a value.
         if len(path) == 0:
             proof.append(node.encode())
             return node, proof
 
         if type(node) is Leaf:
-            # If we've found a leaf, it's either the leaf we're 
+            # If we've found a leaf, it's either the leaf we're
             # looking for or wrong leaf.(we hope its the wrong leaf but
             # that is up to the main method).
             proof.append(node.encode())
@@ -785,31 +829,48 @@ class MerklePatriciaTrie:
                 # This is the furthest node we can go.
                 return node, proof
 
-        raise InvalidNodeError('Invalid node type {}'.format(type(node)))
+        raise InvalidNodeError("Invalid node type {}".format(type(node)))
 
-    def _verify_proof_of_exclusion(self, node_ref, path, proof_storage):
+    def _verify_proof_of_exclusion(
+        self,
+        node_ref: Union[bytes, Leaf, Branch, Extension],
+        path: NibblePath,
+        proof_storage: dict,
+    ) -> Tuple[bool, dict]:
         """
         Verify proof of exclusion support method.
-        
+
         Used to verify a proof of exclusion for a node ref.
-        
+
         Parameters
         ----------
-        node_ref: bytes
-            Reference to a node.
+        node_ref: bytes, Leaf, Branch, Extension
+            Reference to a node or the node itself.
         path: NibblePath
             Path to a value.
         proof: dict
             Dictionary with nodes. (empty in the beginning)
-            
+
         Returns
         -------
-        bool
-            True if the proof is valid, False otherwise.
-        
+        bool, node_ref
+            True if this the last node in the proof, the next node ref otherwise.
+        proof_storage: dict
+            Dictionary with nodes.
+
+        Raises
+        ------
+        PoeError
+            PoeError when there is something wrong with the proof.
+        InvalidNodeError
+            InvalidNodeError when there is an invalid node in the proof.
         """
         # Get the right node from the proof storage
-        if not (isinstance(node_ref, Leaf) or isinstance(node_ref, Extension) or isinstance(node_ref, Branch)):
+        if not (
+            isinstance(node_ref, Leaf)
+            or isinstance(node_ref, Extension)
+            or isinstance(node_ref, Branch)
+        ):
             # Otherwise try to get it from storage or decode it from RLP
             if len(node_ref) == 32:
                 try:
@@ -829,16 +890,18 @@ class MerklePatriciaTrie:
 
         # Remove the used reference and node from the dictionary
         if proof_storage.pop(node_ref, None) == None:
-            raise PoeError('The proof storage returned a node with value None,'
-                           ' this should not be possible.')
+            raise PoeError(
+                "The proof storage returned a node with value None,"
+                " this should not be possible."
+            )
 
-        # If path is empty, our travel is over. Main `get` method 
+        # If path is empty, our travel is over. Main `get` method
         # will check if this node has a value.
         if len(path) == 0:
             return node, proof_storage
 
         if type(node) is Leaf:
-            # If we've found a leaf, it's either the leaf we're 
+            # If we've found a leaf, it's either the leaf we're
             # looking for or wrong leaf.(we hope its the wrong leaf but
             # that is up to the main method).
             return node, proof_storage
@@ -847,7 +910,9 @@ class MerklePatriciaTrie:
             # If we've found an extension, we need to go deeper.
             if path.starts_with(node.path):
                 rest_path = path.consume(len(node.path))
-                return self._verify_proof_of_exclusion(node.next_ref, rest_path, proof_storage)
+                return self._verify_proof_of_exclusion(
+                    node.next_ref, rest_path, proof_storage
+                )
             else:
                 return node, proof_storage
 
@@ -855,19 +920,21 @@ class MerklePatriciaTrie:
             # If we've found a branch node, go to the appropriate branch.
             branch = node.branches[path.at(0)]
             if len(branch) > 0:
-                return self._verify_proof_of_exclusion(branch, path.consume(1), proof_storage)
+                return self._verify_proof_of_exclusion(
+                    branch, path.consume(1), proof_storage
+                )
             else:
                 # This is the furthest node we can go.
                 return node, proof_storage
 
-        raise InvalidNodeError('Invalid node type {}'.format(type(node)))
+        raise InvalidNodeError("Invalid node type {}".format(type(node)))
 
-    def _update(self, node_ref, path, value):
+    def _update(self, node_ref: bytes, path: NibblePath, value: bytes) -> bytes:
         """
         Update support method.
-        
+
         Updates a value associated with provided key.
-        
+
         Parameters
         ----------
         node_ref: bytes
@@ -876,17 +943,16 @@ class MerklePatriciaTrie:
             Path to a value.
         value: bytes
             Value to be stored.
-            
+
         Returns
         -------
         bytes
             New root of the trie.
-        
+
         Raises
         ------
         KeyError
             KeyError is raised if there is no value assotiated with provided key.
-            
         """
         if not node_ref:
             return self._store_node(Leaf(path, value))
@@ -895,7 +961,7 @@ class MerklePatriciaTrie:
 
         if type(node) == Leaf:
             # If we're updating the leaf there are 2 possible ways:
-            # 1. Path is equals to the rest of the key. Then we should 
+            # 1. Path is equals to the rest of the key. Then we should
             #    just update value of this leaf.
             # 2. Path differs. Then we should split this node into several nodes.
 
@@ -914,26 +980,28 @@ class MerklePatriciaTrie:
             node.path.consume(len(common_prefix))
 
             # Create branch node to split paths.
-            branch_reference = self._create_branch_node(path, value, 
-                                            node.path, node.data)
+            branch_reference = self._create_branch_node(
+                path, value, node.path, node.data
+            )
 
             # If common part isn't empty, we have to create an extension node before branch node.
             # Otherwise, we need just branch node.
             if len(common_prefix) != 0:
-                return self._store_node(Extension(common_prefix, 
-                                                       branch_reference))
+                return self._store_node(Extension(common_prefix, branch_reference))
             else:
                 return branch_reference
 
         elif type(node) == Extension:
             # If we're updating an extenstion there are 2 possible ways:
-            # 1. Key starts with the extension node's path. 
+            # 1. Key starts with the extension node's path.
             #    Then we just go ahead and all the work will be done there.
             # 2. Key doesn't start with extension node's path. Then we have to split extension node.
 
             if path.starts_with(node.path):
                 # Just go ahead.
-                new_reference = self._update(node.next_ref, path.consume(len(node.path)), value)
+                new_reference = self._update(
+                    node.next_ref, path.consume(len(node.path)), value
+                )
                 return self._store_node(Extension(node.path, new_reference))
 
             # Split extension node.
@@ -947,8 +1015,8 @@ class MerklePatriciaTrie:
 
             # Create an empty branch node. It may have or have not the value depending on the length
             # of the rest of the key.
-            branches = [b''] * 16
-            branch_value = value if len(path) == 0 else b''
+            branches = [b""] * 16
+            branch_value = value if len(path) == 0 else b""
 
             # If needed, create leaf branch for the value we're inserting.
             self._create_branch_leaf(path, value, branches)
@@ -979,10 +1047,12 @@ class MerklePatriciaTrie:
 
             return self._store_node(node)
 
-    def _create_branch_node(self, path_a, value_a, path_b, value_b):
-        """ 
-        Create a branch node with up to two leaves and maybe value. 
-        
+    def _create_branch_node(
+        self, path_a: NibblePath, value_a: bytes, path_b: NibblePath, value_b: bytes
+    ) -> bytes:
+        """
+        Create a branch node with up to two leaves and maybe value.
+
         Parameters
         ----------
         path_a: NibblePath
@@ -997,15 +1067,14 @@ class MerklePatriciaTrie:
         Returns
         -------
         bytes
-            Reference to created node. 
-
+            Reference to created node.
         """
 
         assert len(path_a) != 0 or len(path_b) != 0
 
-        branches = [b''] * 16
+        branches = [b""] * 16
 
-        branch_value = b''
+        branch_value = b""
         if len(path_a) == 0:
             branch_value = value_a
         elif len(path_b) == 0:
@@ -1016,10 +1085,12 @@ class MerklePatriciaTrie:
 
         return self._store_node(Branch(branches, branch_value))
 
-    def _create_branch_leaf(self, path, value, branches):
+    def _create_branch_leaf(
+        self, path: NibblePath, value: bytes, branches: List[bytes]
+    ) -> ...:
         """
         If path isn't empty, creates leaf node and stores reference in appropriate branch.
-        
+
         Parameters
         ----------
         path: NibblePath
@@ -1028,11 +1099,10 @@ class MerklePatriciaTrie:
             Value to be stored in a leaf.
         branches: list of bytes
             List of references to nodes.
-        
+
         Returns
         -------
         None
-        
         """
         if len(path) > 0:
             idx = path.at(0)
@@ -1040,7 +1110,9 @@ class MerklePatriciaTrie:
             leaf_ref = self._store_node(Leaf(path.consume(1), value))
             branches[idx] = leaf_ref
 
-    def _create_branch_extension(self, path, next_ref, branches):
+    def _create_branch_extension(
+        self, path: NibblePath, next_ref: bytes, branches: List[bytes]
+    ) -> ...:
         """
         If needed, create an extension node and stores reference in appropriate branch.
         Otherwise just stores provided reference.
@@ -1053,13 +1125,14 @@ class MerklePatriciaTrie:
             Reference to a node.
         branches: list of bytes
             List of references to nodes.
-        
+
         Returns
         -------
         None
-
         """
-        assert len(path) >= 1, "Path for extension node should contain at least one nibble"
+        assert (
+            len(path) >= 1
+        ), "Path for extension node should contain at least one nibble"
 
         if len(path) == 1:
             branches[path.at(0)] = next_ref
@@ -1068,15 +1141,15 @@ class MerklePatriciaTrie:
             reference = self._store_node(Extension(path.consume(1), next_ref))
             branches[idx] = reference
 
-    def _store_node(self, node):
+    def _store_node(self, node: Node) -> bytes:
         """
         Build the reference from the node and if needed saves node in the storage.
-        
+
         Parameters
         ----------
         node: Node
             Node to be stored.
-        
+
         Returns
         -------
         bytes
@@ -1091,30 +1164,33 @@ class MerklePatriciaTrie:
         """
         Enum that shows which action was performed on the previous step of the deletion.
         """
+
         # Node was deleted. Returned value should be (_DeleteAction, None).
-        DELETED = 1,
+        DELETED = (1,)
         # Node was updated. Returned value should be (_DeleteAction, new_node_reference)
-        UPDATED = 2,
-        # Branch became useless. Returned value should be 
+        UPDATED = (2,)
+        # Branch became useless. Returned value should be
         # (_DeleteAction, (path_to_new_reference, new_node_reference))
         USELESS_BRANCH = 3
 
-    def _delete(self, node_ref, path):
+    def _delete(
+        self, node_ref: bytes, path: NibblePath
+    ) -> Tuple[_DeleteAction, Optional[bytes]]:
         """
         Delete method helper.
-        
+
         Parameters
         ----------
         node_ref: bytes
             Reference to the node.
         path: NibblePath
             Path to the node.
-            
+
         Returns
         -------
         _DeleteAction
             Action that was performed on the previous step of the deletion.
-        
+
         """
 
         node = self._get_node(node_ref)
@@ -1190,27 +1266,33 @@ class MerklePatriciaTrie:
             idx = None
             info = None
 
-            assert len(path) != 0 or len(node.data) != 0, "Empty path or empty branch node in _delete"
+            assert (
+                len(path) != 0 or len(node.data) != 0
+            ), "Empty path or empty branch node in _delete"
 
             # Decide if we need to remove value of this node or go deeper.
             if len(path) == 0 and len(node.data) == 0:
                 # This branch node has no value thus we can't delete it.
                 raise BranchPathError("Branch node has no value so cannot be deleted")
             elif len(path) == 0 and len(node.data) != 0:
-                node.data = b''
+                node.data = b""
                 action = MerklePatriciaTrie._DeleteAction.DELETED
             else:
                 # Store idx of the branch we're working with.
                 idx = path.at(0)
 
                 if len(node.branches[idx]) == 0:
-                    raise BranchPathError("Empty branch in _delete, could not delete the value.")
+                    raise BranchPathError(
+                        "Empty branch in _delete, could not delete the value."
+                    )
 
                 action, info = self._delete(node.branches[idx], path.consume(1))
-                node.branches[idx] = b''
+                node.branches[idx] = b""
 
             if action == MerklePatriciaTrie._DeleteAction.DELETED:
-                non_empty_count = sum(map(lambda x: 1 if len(x) > 0 else 0, node.branches))
+                non_empty_count = sum(
+                    map(lambda x: 1 if len(x) > 0 else 0, node.branches)
+                )
 
                 if non_empty_count == 0 and len(node.data) == 0:
                     # Branch node is empty, just delete it.
@@ -1220,7 +1302,10 @@ class MerklePatriciaTrie:
                     path = NibblePath([])
                     reference = self._store_node(Leaf(path, node.data))
 
-                    return MerklePatriciaTrie._DeleteAction.USELESS_BRANCH, (path, reference)
+                    return MerklePatriciaTrie._DeleteAction.USELESS_BRANCH, (
+                        path,
+                        reference,
+                    )
                 elif non_empty_count == 1 and len(node.data) == 0:
                     # No value and one branch
                     return self._build_new_node_from_last_branch(node.branches)
@@ -1242,25 +1327,27 @@ class MerklePatriciaTrie:
                 reference = self._store_node(node)
                 return MerklePatriciaTrie._DeleteAction.UPDATED, reference
 
-    def _build_new_node_from_last_branch(self, branches):
+    def _build_new_node_from_last_branch(
+        self, branches: List[bytes]
+    ) -> Tuple[_DeleteAction, bytes]:
         """
         Combine nibble of the only branch left with underlying node and creates new node.
-        
+
         Parameters
         ----------
         branches : list of bytes
             List of references to the branches.
-            
+
         Returns
         -------
         tuple
             Tuple of `_DeleteAction` and reference to the new node.
-        
+
         Raises
         ------
         KeyError
             If there is no branches left.
-        
+
         """
 
         # Find the index of the only stored branch.

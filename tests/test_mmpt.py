@@ -1,19 +1,13 @@
 import sys, os
-try:
-    from mpt.mmpt import ModifiedMerklePatriciaTrie
-    from mpt.node import Node
-    from mpt.hash import keccak_hash
-    from mpt.proof import Proof
-except (ImportError, ModuleNotFoundError):
-    #Following lines are for assigning parent directory dynamically.
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
-    sys.path.insert(0, parent_dir_path)
-    from src.mpt.mmpt import ModifiedMerklePatriciaTrie
-    from src.mpt.node import Node
-    from src.mpt.errors import PoeError
-    from src.mpt.hash import keccak_hash
-    from src.mpt.proof import Proof
+#Following lines are for assigning parent directory dynamically.
+dir_path = os.path.dirname(os.path.realpath(__file__))
+parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
+sys.path.insert(0, parent_dir_path)
+from src.mpt.mmpt import ModifiedMerklePatriciaTrie
+from src.mpt.node import Node
+from src.mpt.exceptions import PoeError
+from src.mpt.hash import keccak_hash
+from src.mpt.proof import Proof
 import rlp
 from rlp.exceptions import DecodingError
 import unittest
@@ -131,7 +125,6 @@ class Test_proof_of_inclusion(unittest.TestCase):
             self.assertTrue(trie.verify_proof_of_inclusion(proof), 
                     'Proof for {} is not valid.'.format(data[i]))
 
-    # Test if the proof is valid when one point is removed
     def test_verify_one_item_removed(self):
         """Test if the proof is still valid after removing one point."""
         storage = {}
@@ -147,8 +140,6 @@ class Test_proof_of_inclusion(unittest.TestCase):
         trie.delete(b'do')
         self.assertFalse(trie.verify_proof_of_inclusion(proof))
 
-
-    # Test if the proof is valid when one point is added
     def test_verify_one_point_added(self):
         """Test if the proof is still valid after adding one point."""
         storage = {}
@@ -164,7 +155,6 @@ class Test_proof_of_inclusion(unittest.TestCase):
         trie.update(b'testing', b'testing')
         self.assertFalse(trie.verify_proof_of_inclusion(proof) )
 
-    # Test if the proof is valid when one char is removed
     def test_verify_one_char_removed(self):
         """Test if the proof is still valid after removing one char from the proof."""
         storage = {}
@@ -182,7 +172,6 @@ class Test_proof_of_inclusion(unittest.TestCase):
         self.assertFalse(trie.verify_proof_of_inclusion(proof), 
                         'Proof should not be valid.')
 
-    # Test if the proof is valid when one char is added
     def test_verify_one_char_added(self):
         """Test if the proof is still valid after adding one char to the proof."""
         storage = {}
@@ -323,7 +312,6 @@ class Test_proof_of_exclusion(unittest.TestCase):
             self.assertTrue(trie.verify_proof_of_exclusion(proof), 
                     'Proof for {} is not valid.'.format(keys[i]))
 
-    # Test if the proof is valid when one point is removed
     def test_verify_one_item_removed(self):
         """Test if the proof is still valid after removing one point."""
         storage = {}
@@ -341,8 +329,6 @@ class Test_proof_of_exclusion(unittest.TestCase):
         for proof in proofs:
             self.assertFalse(trie.verify_proof_of_exclusion(proof)) 
 
-
-    # Test if the proof is valid when one point is added
     def test_verify_one_point_added(self):
         """Test if the proof is still valid after adding one point."""
         storage = {}
@@ -360,7 +346,6 @@ class Test_proof_of_exclusion(unittest.TestCase):
         for proof in proofs:
             self.assertFalse(trie.verify_proof_of_exclusion(proof)) 
 
-    # Test if the proof is valid when one char is removed
     def test_verify_one_char_removed(self):
         """Test if the proof is still valid after removing one char from the proof."""
         storage = {}
@@ -381,7 +366,6 @@ class Test_proof_of_exclusion(unittest.TestCase):
                     root_hash=og_proof.trie_root, type=og_proof.type)
         self.assertFalse(trie.verify_proof_of_exclusion(proof))
 
-    # Test if the proof is valid when one char is added
     def test_verify_one_char_added(self):
         """Test if the proof is still valid after adding one char to the proof."""
         storage = {}
@@ -560,16 +544,9 @@ class Test_save_and_load(unittest.TestCase):
         new_trie = ModifiedMerklePatriciaTrie()
         new_trie.from_pickle(pickle_bytes)
 
-        # Create proof on original
         proof = trie.get_proof_of_inclusion(data[0])
-
-        # Add data to the original (invalidates the proof on the original trie)
         trie.update(b'new', b'dog')
-
-        # Verify that the proof is invalid on the original trie
         self.assertFalse(trie.verify_proof_of_inclusion(proof))
-        
-        # Verify proof on the copy
         self.assertTrue(new_trie.verify_proof_of_inclusion(proof))
 
 
