@@ -472,6 +472,8 @@ class MerklePatriciaTrie:
         # Otherwise try to get it from storage or decode it from RLP
         if len(node_ref) == 32:
             raw_node = self._storage[node_ref]
+            if isinstance(raw_node, Node):
+                return raw_node
         else:
             raw_node = node_ref
 
